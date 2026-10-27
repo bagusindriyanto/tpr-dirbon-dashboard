@@ -8,10 +8,10 @@ export type Output = {
   totalOutput: number;
   repair: number;
   reject: number;
-  mp: number;
-  jk: number;
-  jo: number;
-  perf: number;
+  manPower: number;
+  workingHour: number;
+  manHour: number;
+  performance: number;
   outputs: number[];
   produksi: number;
   mt: number;

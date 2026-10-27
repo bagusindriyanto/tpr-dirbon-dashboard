@@ -13,9 +13,8 @@ export const createMockOutput = (
   const totalOutput =
     overrides?.totalOutput ?? outputs.reduce((sum, val) => sum + val, 0);
   const totalTarget = overrides?.totalTarget ?? hourlyTarget * 10;
-  const perf =
-    overrides?.perf ??
-    Number(((totalOutput / (totalTarget || 1)) * 100).toFixed(1));
+  const performance =
+    overrides?.performance ?? totalOutput / (totalTarget || 1);
 
   return {
     line,
@@ -25,13 +24,13 @@ export const createMockOutput = (
     hourlyTarget,
     totalTarget,
     totalOutput,
-    perf,
+    performance,
     repair: 5,
     reject: 2,
     outputs,
-    mp: 24,
-    jk: 8,
-    jo: 2,
+    manPower: 24,
+    workingHour: 8,
+    manHour: 2,
     produksi: 1,
     mt: 1,
     trainer: 1,

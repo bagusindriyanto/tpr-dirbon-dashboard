@@ -1,12 +1,12 @@
 import type { Output } from '@/types/output';
 // import { cn } from '@/lib/utils';
 
-// const percentFormat = (value: number) => {
-//   return new Intl.NumberFormat('id', {
-//     style: 'percent',
-//     maximumFractionDigits: 2,
-//   }).format(value);
-// };
+const percentFormat = (value: number) => {
+  return new Intl.NumberFormat('id', {
+    style: 'percent',
+    maximumFractionDigits: 2,
+  }).format(value);
+};
 
 // const decimalFormat = (value: number) => {
 //   return new Intl.NumberFormat('id', {
@@ -65,7 +65,59 @@ export default function OutputCard({ item }: OutputCardProps) {
           <h2>{item.line}</h2>
           {item.operator && <p>({item.operator})</p>}
         </div>
+        <div className="col-span-4 dashboard-cell">
+          <p>{percentFormat(item.performance)}</p>
+        </div>
+        <div className="col-span-2 dashboard-cell">
+          <p>Downtime</p>
+        </div>
       </header>
+
+      <section className="contents">
+        <div className="col-span-8 row-span-2 dashboard-cell">
+          <p>{item.style}</p>
+        </div>
+        <div className="col-span-2 row-span-2 grid grid-cols-2 gap-px 2xl:gap-0.5">
+          <div className="bg-card relative">
+            {item.mt > 0 && (
+              <div className="bg-mt absolute inset-0 animate-blink"></div>
+            )}
+          </div>
+          <div className="bg-card relative">
+            {item.qc > 0 && (
+              <div className="bg-qc absolute inset-0 animate-blink"></div>
+            )}
+          </div>
+          <div className="bg-card relative">
+            {item.trainer > 0 && (
+              <div className="bg-trainer absolute inset-0 animate-blink"></div>
+            )}
+          </div>
+          <div className="bg-card relative">
+            {item.produksi > 0 && (
+              <div className="bg-produksi absolute inset-0 animate-blink"></div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <dl className="contents">
+        {item.outputs.map((output, hour) => (
+          <dd
+            className="dashboard-output text-sm font-medium"
+            // x-text="$format.valueFormat(output)"
+          >
+            {output}
+          </dd>
+        ))}
+      </dl>
+
+      <footer className="contents">
+        <div className="col-span-5 dashboard-cell">Target</div>
+        <div className="col-span-5 dashboard-cell">Man Power</div>
+        <div className="col-span-5 dashboard-cell">Repair</div>
+        <div className="col-span-5 dashboard-cell">Note</div>
+      </footer>
     </article>
   );
 }
