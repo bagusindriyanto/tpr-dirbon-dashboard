@@ -1,6 +1,6 @@
-import { createProduct } from '@/mocks/product';
 import type { GasFunctions } from '../../shared/contracts';
+import { mockOutputsData } from '@/mocks/output';
 
 export const gasMock: GasFunctions = {
-  getProducts: () => Array.from({ length: 10 }).map(createProduct),
+  getOutputs: () => mockOutputsData,
 };
