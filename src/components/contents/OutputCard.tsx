@@ -61,9 +61,9 @@ export default function OutputCard({ item }: OutputCardProps) {
   return (
     <article className="bg-card relative grid grid-cols-10 grid-rows-subgrid border shadow-sm text-center align-middle row-span-6">
       <header className="contents">
-        <div className="col-span-4 flex items-center justify-center gap-1">
+        <div className="col-span-4 flex justify-center items-center gap-1">
           <h2>{item.line}</h2>
-          <p>{item.operator}</p>
+          {item.operator && <p>({item.operator})</p>}
         </div>
       </header>
     </article>

@@ -168,3 +168,11 @@
     @apply font-sans;
   }
 }
+
+@utility dashboard-cell {
+  @apply grid place-items-center p-0.5 2xl:p-1;
+}
+
+@utility dashboard-output {
+  @apply grid place-items-center p-1;
+}
