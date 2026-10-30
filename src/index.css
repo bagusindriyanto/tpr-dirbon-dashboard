@@ -58,6 +58,19 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  --animate-blink: blink 1s infinite;
+  @keyframes blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
 }
 
 :root {
@@ -170,9 +183,5 @@
 }
 
 @utility dashboard-cell {
-  @apply grid place-items-center p-0.5 2xl:p-1;
-}
-
-@utility dashboard-output {
   @apply grid place-items-center p-1;
 }
