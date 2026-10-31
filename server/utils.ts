@@ -28,6 +28,14 @@ function toString(value: CellValue): string {
   return result.trim();
 }
 
+function toDate(value: CellValue): Date {
+  if (!(value instanceof Date)) {
+    throw new Error('Nilai sel harus berupa tanggal');
+  }
+
+  return value;
+}
+
 const DATE_TIME_FORMAT = 'dd/MM/yyyy HH:mm:ss';
 
 function toDateTimeString(value: CellValue): string {

@@ -65,3 +65,67 @@ function getOutputs(): ReturnType<GasFunctions['getOutputs']> {
 
   return { tpr: tprData, dirbon: dirbonData };
 }
+
+function getProblems(): ReturnType<GasFunctions['getProblems']> {
+  const now = new Date();
+  const {
+    tprDirbon: { spreadsheetId, sheetNames },
+  } = SPREADSHEET_CONFIG;
+  const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(
+    sheetNames.kanban,
+  );
+
+  if (!sheet) {
+    throw new Error(`Sheet '${sheetNames.kanban}' tidak tersedia.`);
+  }
+
+  const data: CellValue[][] = sheet
+    .getRange(2, 1, sheet.getLastRow() - 1, 8)
+    .getValues();
+
+  const problems = data.reduce<Problem[]>((acc, row) => {
+    const timestamp = toDate(row[0]);
+    const line = toString(row[1]);
+    const problem = toString(row[2]);
+    const pic = toString(row[3]) as ProblemPIC;
+    const start = row[4] instanceof Date ? toDate(row[4]) : null;
+    const finish = row[5] instanceof Date ? toDate(row[5]) : null;
+    const id = toNumber(row[7]);
+    const status = !start
+      ? 'Belum Proses'
+      : !finish
+        ? 'Dalam Proses'
+        : 'Finish Proses';
+    const elapsedTime = !finish ? 0 : now.getTime() - finish.getTime();
+
+    if (status === 'Finish Proses' && elapsedTime > 24 * 60 * 60 * 1000)
+      return acc;
+
+    acc.push({
+      timestamp: toDateTimeString(timestamp),
+      line,
+      problem,
+      pic,
+      status,
+      start: start ? toDateTimeString(start) : '-',
+      finish: finish ? toDateTimeString(finish) : '-',
+      timestampTime: timestamp.getTime(),
+      id,
+    });
+
+    return acc;
+  }, []);
+
+  problems.sort((a, b) => {
+    const aFinish = a.status === 'Finish Proses';
+    const bFinish = b.status === 'Finish Proses';
+
+    if (aFinish !== bFinish) return aFinish ? 1 : -1;
+
+    if (a.status !== b.status) return a.status.localeCompare(b.status);
+
+    return a.timestampTime - b.timestampTime;
+  });
+
+  return problems;
+}
