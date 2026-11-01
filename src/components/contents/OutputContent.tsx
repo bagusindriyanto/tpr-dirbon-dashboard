@@ -3,6 +3,7 @@ import { useGetOutput } from '@/api/getOutputs';
 import type { Tab } from '@/types/tab';
 // import OutputCard from './OutputCard';
 import { AlertTriangleIcon, InfoIcon, RefreshCwIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Spinner } from '../ui/spinner';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '../ui/alert';
 import { Button } from '../ui/button';
@@ -28,6 +29,15 @@ export default function OutputContent({ section }: OutputContentProps) {
     error,
     refetch,
   } = useGetOutput(section);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setTick((value) => value + 1);
+    }, 8_000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   if (isPending)
     return (
@@ -87,9 +97,9 @@ export default function OutputContent({ section }: OutputContentProps) {
             </EmptyContent>
           </Empty>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
             {outputData.map((item) => (
-              <OutputCard key={item.line} item={item} />
+              <OutputCard key={item.line} item={item} tick={tick} />
             ))}
           </div>
         )

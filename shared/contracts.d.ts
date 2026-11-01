@@ -1,23 +1,45 @@
-export type Output = {
-  line: string;
+export type StyleHour = {
+  hour: number;
+  output: number;
+  repair: number;
+  reject: number;
+};
+
+export type StyleRun = {
+  id: string;
   style: string;
   operator: string;
-  wip: number;
+  startHour: number;
+  endHour: number;
   hourlyTarget: number;
   totalTarget: number;
   totalOutput: number;
-  repair: number;
-  reject: number;
+  totalRepair: number;
+  totalReject: number;
   manPower: number;
   workingHour: number;
   manHour: number;
+  wip: number;
   performance: number;
-  outputs: number[];
+  hours: StyleHour[];
+};
+
+export type Output = {
+  line: string;
+  shift: Shift;
+  performance: number;
+  data: StyleRun[];
   produksi: number;
   mt: number;
   trainer: number;
   qc: number;
   problems: string[];
+};
+
+export type OutputKey = {
+  line: string;
+  shift: string;
+  spo: string;
 };
 
 export type Problem = {
@@ -33,6 +55,7 @@ export type Problem = {
 };
 
 export type Section = 'tpr' | 'dirbon';
+export type Shift = '1' | '2';
 export type ProblemPIC = 'MT' | 'Produksi' | 'Trainer' | 'QC';
 export type ProblemStatus = 'Belum Proses' | 'Dalam Proses' | 'Finish Proses';
 

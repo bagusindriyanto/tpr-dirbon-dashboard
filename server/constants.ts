@@ -2,9 +2,9 @@ const SPREADSHEET_CONFIG = {
   tprDirbon: {
     spreadsheetId: '1ky7rSxy20KQJ3zcZw0mVY4qE48G6CKAjAbb3zybEmKk',
     sheetNames: {
-      plan: 'Plan (DEV)',
-      actual: 'Actual (DEV)',
-      wip: 'WIP',
+      target: 'Target (DEV)',
+      actual: 'Actual/Jam (DEV)',
+      wip: 'WIP Data (DEV)',
       kanban: 'Kanban',
     },
   },

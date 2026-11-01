@@ -1,5 +1,6 @@
 import type { Output } from '@/types/output';
 import { cn } from '@/lib/utils';
+import { isWithinShift, PRODUCTION_HOURS, SHIFT_LABEL } from '@/lib/shift';
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -68,7 +69,9 @@ function performanceTone(performance: number): Tone {
 }
 
 function outputTone(output: number, target: number): Tone {
-  if (!Number.isFinite(output) || output <= 0 || target <= 0) return TONES.none;
+  if (!Number.isFinite(output) || output <= 0 || target <= 0) {
+    return output <= 0 ? TONES.danger : TONES.none;
+  }
 
   const ratio = output / target;
 
@@ -104,6 +107,7 @@ const DOWNTIME_FLAGS: {
 
 type OutputCardProps = {
   item: Output;
+  tick?: number;
 };
 
 function Kpi({
@@ -149,13 +153,38 @@ function Meta({
   );
 }
 
-export default function OutputCard({ item }: OutputCardProps) {
+export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
   const hasPerformance = Number.isFinite(item.performance);
   const tone = performanceTone(item.performance);
-  const balance = item.totalOutput - item.totalTarget;
+  const latestHour = item.data.reduce(
+    (max, run) => Math.max(max, run.endHour),
+    0,
+  );
+  const latestRunIndex = item.data.findIndex(
+    (run) => latestHour >= run.startHour && latestHour <= run.endHour,
+  );
+  const activeIndex = isWithinShift(item.shift)
+    ? latestRunIndex
+    : item.data.length > 0
+      ? tick % item.data.length
+      : -1;
+  const activeRun = activeIndex >= 0 ? item.data[activeIndex] : undefined;
+  const balance = (activeRun?.totalOutput ?? 0) - (activeRun?.totalTarget ?? 0);
+  const runByHour = new Map<number, number>();
+
+  item.data.forEach((run, index) => {
+    for (let hour = run.startHour; hour <= run.endHour; hour++) {
+      runByHour.set(hour, index);
+    }
+  });
+
+  const hours = Array.from(
+    { length: PRODUCTION_HOURS },
+    (_, index) => index + 1,
+  );
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
       <div
         className={cn('h-1 w-full shrink-0', tone.accent)}
         aria-hidden="true"
@@ -163,21 +192,24 @@ export default function OutputCard({ item }: OutputCardProps) {
 
       <header className="flex items-start gap-3 px-3 pb-2 pt-2.5">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <h2 className="text-2xl font-black leading-none tracking-tight">
               {item.line}
             </h2>
-            {item.operator && (
-              <span className="truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {item.operator}
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+              S{item.shift} · {SHIFT_LABEL[item.shift]}
+            </span>
+            {activeRun?.operator && (
+              <span className="max-w-28 truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {activeRun.operator}
               </span>
             )}
           </div>
           <p
             className="mt-1.5 truncate text-sm font-semibold leading-tight"
-            title={item.style}
+            title={activeRun?.style ?? 'Tidak ada style aktif'}
           >
-            {item.style}
+            {activeRun?.style ?? 'Tidak ada style aktif'}
           </p>
         </div>
 
@@ -186,6 +218,7 @@ export default function OutputCard({ item }: OutputCardProps) {
             'flex w-24 shrink-0 flex-col items-center justify-center rounded-lg px-2 py-1.5',
             tone.solid,
           )}
+          title="Performance seluruh style di line ini"
         >
           <span className="text-[9px] font-bold uppercase tracking-widest opacity-75">
             Performance
@@ -200,40 +233,92 @@ export default function OutputCard({ item }: OutputCardProps) {
         className="px-3 pb-2"
         aria-label={`Output per jam line ${item.line}`}
       >
-        <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Output / Jam
           </h3>
-          <p className="text-[10px] font-medium text-muted-foreground">
-            Target {numberFormat.format(item.hourlyTarget)} pcs/jam
+          <p className="truncate text-[10px] font-medium text-muted-foreground">
+            {activeRun
+              ? `Target ${numberFormat.format(activeRun.hourlyTarget)} pcs/jam`
+              : 'Tidak ada style aktif'}
           </p>
         </div>
 
-        <ol className="flex gap-1">
-          {item.outputs.map((output, hour) => {
-            const hourTone = outputTone(output, item.hourlyTarget);
-            const hasOutput = Number.isFinite(output) && output > 0;
+        <div className="mb-1 flex flex-wrap gap-0.5 sm:gap-1">
+          {item.data.map((run, index) => {
+            const isActive = index === activeIndex;
+
+            return (
+              <span
+                key={run.id}
+                className={cn(
+                  'inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide',
+                  isActive
+                    ? cn('border-transparent', performanceTone(run.performance).solid)
+                    : 'border-border bg-muted text-muted-foreground grayscale opacity-70',
+                )}
+                title={`${run.style} · Jam ${run.startHour}–${run.endHour} · ${percentFormat.format(run.performance)}`}
+              >
+                <span className="max-w-24 truncate">{run.style}</span>
+                <span className="shrink-0 tabular-nums opacity-75">
+                  {run.startHour}–{run.endHour}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+
+        <div
+          className="mb-1 grid grid-cols-10 gap-0.5 sm:gap-1"
+          aria-hidden="true"
+        >
+          {item.data.map((run, index) => (
+            <div
+              key={run.id}
+              style={{ gridColumn: `${run.startHour} / ${run.endHour + 1}` }}
+              className={cn(
+                'h-1 rounded-full',
+                index === activeIndex
+                  ? performanceTone(run.performance).accent
+                  : 'bg-muted-foreground/20',
+              )}
+            />
+          ))}
+        </div>
+
+        <ol className="grid grid-cols-10 gap-0.5 sm:gap-1">
+          {hours.map((hour) => {
+            const runIndex = runByHour.get(hour);
+            const run = runIndex !== undefined ? item.data[runIndex] : undefined;
+            const isActive = runIndex === activeIndex;
+            const output = run?.hours.find((entry) => entry.hour === hour)?.output ?? 0;
+            const hourTone = run ? outputTone(output, run.hourlyTarget) : TONES.none;
             const ratio =
-              hasOutput && item.hourlyTarget > 0
-                ? Math.min(output / item.hourlyTarget, 1)
+              run && run.hourlyTarget > 0
+                ? Math.min(output / run.hourlyTarget, 1)
                 : 0;
 
             return (
               <li
                 key={hour}
                 className={cn(
-                  'relative flex min-w-0 flex-1 flex-col items-center justify-end gap-1 overflow-hidden rounded-md border px-0.5 pb-1 pt-1.5',
+                  'relative flex min-w-0 flex-col items-center justify-end gap-1 overflow-hidden rounded-md border px-0.5 pb-1 pt-1.5',
                   hourTone.cell,
+                  run && !isActive && 'grayscale opacity-60',
                 )}
-                title={`Jam ke-${hour + 1}: ${hasOutput ? numberFormat.format(output) : 0} pcs`}
+                title={
+                  run
+                    ? `Jam ke-${hour}: ${numberFormat.format(output)} pcs · ${run.style}`
+                    : `Jam ke-${hour}: tidak ada style`
+                }
               >
                 <span
                   className={cn(
-                    'text-sm font-bold leading-none tabular-nums',
+                    'text-xs font-bold leading-none tabular-nums sm:text-sm',
                     hourTone.text,
                   )}
                 >
-                  {hasOutput ? numberFormat.format(output) : '–'}
+                  {run ? numberFormat.format(output) : '–'}
                 </span>
                 <span className="h-1 w-full overflow-hidden rounded-full bg-border">
                   <span
@@ -242,7 +327,7 @@ export default function OutputCard({ item }: OutputCardProps) {
                   />
                 </span>
                 <span className="text-[9px] font-semibold leading-none text-muted-foreground">
-                  {hour + 1}
+                  {hour}
                 </span>
               </li>
             );
@@ -253,19 +338,33 @@ export default function OutputCard({ item }: OutputCardProps) {
       <dl className="grid grid-cols-3 divide-x divide-border border-y bg-muted/20">
         <Kpi
           label="Target"
-          value={`${numberFormat.format(item.totalTarget)} pcs`}
+          value={
+            activeRun
+              ? `${numberFormat.format(activeRun.totalTarget)} pcs`
+              : '–'
+          }
         />
         <Kpi
           label="Actual"
-          value={`${numberFormat.format(item.totalOutput)} pcs`}
+          value={
+            activeRun
+              ? `${numberFormat.format(activeRun.totalOutput)} pcs`
+              : '–'
+          }
         />
         <Kpi
           label="Balance"
-          value={`${balance > 0 ? '+' : ''}${numberFormat.format(balance)} pcs`}
+          value={
+            activeRun
+              ? `${balance > 0 ? '+' : ''}${numberFormat.format(balance)} pcs`
+              : '–'
+          }
           className={
-            balance >= 0
-              ? 'text-emerald-600 dark:text-success'
-              : 'text-red-600 dark:text-danger'
+            activeRun
+              ? balance >= 0
+                ? 'text-emerald-600 dark:text-success'
+                : 'text-red-600 dark:text-danger'
+              : 'text-muted-foreground'
           }
         />
       </dl>
@@ -303,22 +402,34 @@ export default function OutputCard({ item }: OutputCardProps) {
         <Meta
           icon={UsersIcon}
           label="Man Power"
-          value={`${numberFormat.format(item.manPower)} org`}
+          value={
+            activeRun
+              ? `${numberFormat.format(activeRun.manPower)} org`
+              : '–'
+          }
         />
         <Meta
           icon={PackageIcon}
           label="WIP"
-          value={`${numberFormat.format(item.wip)} pcs`}
+          value={activeRun ? `${numberFormat.format(activeRun.wip)} pcs` : '–'}
         />
         <Meta
           icon={WrenchIcon}
           label="Repair"
-          value={`${numberFormat.format(item.repair)} pcs`}
+          value={
+            activeRun
+              ? `${numberFormat.format(activeRun.totalRepair)} pcs`
+              : '–'
+          }
         />
         <Meta
           icon={ShieldXIcon}
           label="Reject"
-          value={`${numberFormat.format(item.reject)} pcs`}
+          value={
+            activeRun
+              ? `${numberFormat.format(activeRun.totalReject)} pcs`
+              : '–'
+          }
         />
       </dl>
 

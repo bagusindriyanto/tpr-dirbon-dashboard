@@ -1,51 +1,139 @@
 import { fakerID_ID as faker } from '@faker-js/faker';
-import type { Output } from '../../shared/contracts';
+import type {
+  Output,
+  ProblemPIC,
+  Shift,
+  StyleHour,
+  StyleRun,
+} from '../../shared/contracts';
 
-export const createMockOutput = (line: string): Output => {
-  const style = faker.lorem.sentence({ min: 8, max: 10 });
-  const operator = faker.person.firstName();
+const PRODUCTION_HOURS = 10;
+
+const STYLE_POOL = [
+  'TR-1G1415-POTONG KOTAK',
+  'TR-2B2201-ASSY FRAME',
+  'TR-3C1102-SEAL RING',
+  'TR-4D3310-BRACKET',
+  'TR-5E4420-COVER VALVE',
+] as const;
+
+const PIC_POOL = [
+  'MT',
+  'Produksi',
+  'Trainer',
+  'QC',
+] as const satisfies readonly ProblemPIC[];
+
+function createMockRun(
+  line: string,
+  shift: Shift,
+  style: string,
+  startHour: number,
+  workingHour: number,
+): StyleRun {
   const hourlyTarget = faker.number.int({ min: 30, max: 60 });
-  const outputs = faker.helpers.multiple(
-    () => faker.number.int({ min: hourlyTarget - 5, max: hourlyTarget + 5 }),
-    { count: 10 },
-  );
-  const totalOutput = outputs.reduce((sum, val) => sum + val, 0);
-
-  const workingHour = 10;
-  const wip = faker.number.int({ min: 0, max: hourlyTarget });
   const manPower = faker.number.int({ min: 1, max: 10 });
-  const repair = faker.number.int({ min: 0, max: wip });
-  const reject = faker.number.int({ min: 0, max: wip });
-  const manHour = manPower * workingHour;
+  const wip = faker.number.int({ min: 0, max: hourlyTarget });
+  const operator = faker.person.firstName();
+
+  const hours: StyleHour[] = Array.from(
+    { length: workingHour },
+    (_, index) => ({
+      hour: startHour + index,
+      output: faker.datatype.boolean({ probability: 0.08 })
+        ? 0
+        : faker.number.int({
+            min: Math.max(0, hourlyTarget - 8),
+            max: hourlyTarget + 6,
+          }),
+      repair: faker.number.int({ min: 0, max: 4 }),
+      reject: faker.number.int({ min: 0, max: 4 }),
+    }),
+  );
+
+  const totalOutput = hours.reduce((sum, hour) => sum + hour.output, 0);
+  const totalRepair = hours.reduce((sum, hour) => sum + hour.repair, 0);
+  const totalReject = hours.reduce((sum, hour) => sum + hour.reject, 0);
   const totalTarget = hourlyTarget * workingHour;
-  const performance = totalOutput / (totalTarget || 1);
-  const produksi = faker.number.int({ min: 0, max: 1 });
-  const mt = faker.number.int({ min: 0, max: 1 });
-  const trainer = faker.number.int({ min: 0, max: 1 });
-  const qc = faker.number.int({ min: 0, max: 1 });
-  const problems = faker.helpers.multiple(() => faker.lorem.words(3), {
-    count: faker.number.int({ min: 0, max: 5 }),
-  });
 
   return {
-    line,
-    operator,
+    id: `${line}-${shift}-${style}-${startHour}`,
     style,
-    wip,
+    operator,
+    startHour,
+    endHour: startHour + workingHour - 1,
     hourlyTarget,
     totalTarget,
     totalOutput,
-    performance,
-    repair,
-    reject,
-    outputs,
+    totalRepair,
+    totalReject,
     manPower,
     workingHour,
-    manHour,
-    produksi,
-    mt,
-    trainer,
-    qc,
+    manHour: manPower * workingHour,
+    wip,
+    performance: totalTarget > 0 ? totalOutput / totalTarget : 0,
+    hours,
+  };
+}
+
+export const createMockOutput = (line: string): Output => {
+  const shift = faker.helpers.arrayElement(['1', '2'] as const);
+  const runCount = faker.number.int({ min: 1, max: 3 });
+  const repeatFirstStyle = runCount >= 3 && faker.datatype.boolean();
+  const runs: StyleRun[] = [];
+  let nextHour = 1;
+
+  for (let index = 0; index < runCount; index++) {
+    const remainingRuns = runCount - index;
+    const remainingHours = PRODUCTION_HOURS - nextHour + 1;
+
+    if (remainingHours < remainingRuns) break;
+
+    const maxLength = remainingHours - (remainingRuns - 1);
+    const workingHour =
+      index === runCount - 1
+        ? remainingHours
+        : faker.number.int({ min: 1, max: maxLength });
+    const previousStyle = runs[runs.length - 1]?.style;
+    const style =
+      index === runCount - 1 && repeatFirstStyle && runs.length > 0
+        ? runs[0].style
+        : faker.helpers.arrayElement(
+            STYLE_POOL.filter((candidate) => candidate !== previousStyle),
+          );
+
+    runs.push(createMockRun(line, shift, style, nextHour, workingHour));
+    nextHour += workingHour;
+
+    if (
+      index < runCount - 1 &&
+      nextHour <= PRODUCTION_HOURS &&
+      faker.datatype.boolean({ probability: 0.18 })
+    ) {
+      nextHour += 1;
+    }
+  }
+
+  const totalOutput = runs.reduce((sum, run) => sum + run.totalOutput, 0);
+  const totalTarget = runs.reduce((sum, run) => sum + run.totalTarget, 0);
+  const activePics = faker.helpers.arrayElements(
+    PIC_POOL,
+    faker.number.int({ min: 0, max: 2 }),
+  );
+  const problems = activePics.map(
+    (pic) =>
+      `${faker.lorem.words(faker.number.int({ min: 2, max: 4 }))} (${pic})`,
+  );
+
+  return {
+    line,
+    shift,
+    performance: totalTarget > 0 ? totalOutput / totalTarget : 0,
+    data: runs,
+    produksi: activePics.includes('Produksi') ? 1 : 0,
+    mt: activePics.includes('MT') ? 1 : 0,
+    trainer: activePics.includes('Trainer') ? 1 : 0,
+    qc: activePics.includes('QC') ? 1 : 0,
     problems,
   };
 };

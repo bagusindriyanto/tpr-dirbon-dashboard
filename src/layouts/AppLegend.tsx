@@ -47,6 +47,27 @@ export default function AppLegend() {
           </div>
         </div>
       </div>
+      <div className="flex flex-col xl:flex-row gap-x-5">
+        <div className="flex items-center">
+          <span className="font-semibold text-xl">Style:</span>
+        </div>
+        <div className="flex flex-col xl:flex-row gap-x-4">
+          <div className="flex items-center gap-x-2">
+            <span
+              className="inline-block size-4 md:size-5 shrink-0 rounded-sm"
+              style={{
+                background:
+                  'linear-gradient(135deg, var(--danger), var(--warning), var(--success), var(--info))',
+              }}
+            ></span>
+            <span>Aktif</span>
+          </div>
+          <div className="flex items-center gap-x-2">
+            <span className="inline-block size-4 md:size-5 shrink-0 bg-muted-foreground/30 rounded-sm grayscale"></span>
+            <span>Nonaktif</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,4 +6,5 @@ export const gasMock: GasFunctions = {
     tpr: Array.from({ length: 20 }, (_, i) => createMockOutput(`T${i + 1}`)),
     dirbon: Array.from({ length: 5 }, (_, i) => createMockOutput(`D${i + 1}`)),
   }),
+  getProblems: () => [],
 };
