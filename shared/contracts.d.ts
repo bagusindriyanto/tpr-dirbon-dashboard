@@ -36,12 +36,6 @@ export type Output = {
   problems: string[];
 };
 
-export type OutputKey = {
-  line: string;
-  shift: string;
-  spo: string;
-};
-
 export type Problem = {
   timestamp: string;
   line: string;
