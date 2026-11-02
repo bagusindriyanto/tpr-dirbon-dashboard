@@ -57,6 +57,8 @@ export type ProblemStatus = 'Belum Proses' | 'Dalam Proses' | 'Finish Proses';
 export type GasResult<TData> = Record<Section, TData[]>;
 
 export type GasFunctions = {
-  getOutputs: () => GasResult<Output>;
-  getProblems: () => Problem[];
+  getData: () => {
+    outputs: GasResult<Output>;
+    problems: Problem[];
+  };
 };

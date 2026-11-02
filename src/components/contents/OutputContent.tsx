@@ -1,7 +1,5 @@
-// import { useGetOutput } from '@/api/getOutput';
-import { useGetOutput } from '@/api/getOutputs';
+import { useGetOutputs } from '@/api/getOutputs';
 import type { Tab } from '@/types/tab';
-// import OutputCard from './OutputCard';
 import { AlertTriangleIcon, InfoIcon, RefreshCwIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Spinner } from '../ui/spinner';
@@ -28,7 +26,7 @@ export default function OutputContent({ section }: OutputContentProps) {
     isFetching,
     error,
     refetch,
-  } = useGetOutput(section);
+  } = useGetOutputs(section);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {

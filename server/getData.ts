@@ -308,16 +308,13 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
   });
 }
 
-function getProblems(
-  spreadsheet?: GoogleAppsScript.Spreadsheet.Spreadsheet,
-): Problem[] {
+function getProblems(): Problem[] {
   const now = new Date();
   const {
     tprDirbon: { spreadsheetId, sheetNames },
   } = SPREADSHEET_CONFIG;
-  const targetSpreadsheet =
-    spreadsheet ?? SpreadsheetApp.openById(spreadsheetId);
-  const sheet = targetSpreadsheet.getSheetByName(sheetNames.kanban);
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = spreadsheet.getSheetByName(sheetNames.kanban);
 
   if (!sheet) {
     throw new Error(`Sheet '${sheetNames.kanban}' tidak tersedia.`);
@@ -375,7 +372,7 @@ function getProblems(
   return problems;
 }
 
-function getOutputs(): ReturnType<GasFunctions['getOutputs']> {
+function getData(): ReturnType<GasFunctions['getData']> {
   const {
     tprDirbon: { spreadsheetId, sheetNames },
   } = SPREADSHEET_CONFIG;
@@ -393,7 +390,7 @@ function getOutputs(): ReturnType<GasFunctions['getOutputs']> {
   const actualData: CellValue[][] = actualSheet.getDataRange().getValues();
   const wipByStyle = readWipReferences(wipData);
   const targetByStyle = readTargetReferences(targetsData);
-  const problems = getProblems(spreadsheet);
+  const problems = getProblems();
   const rows = readActualOutputRows(actualData).map((row) => {
     const key = createStyleReferenceKey(
       row.date,
@@ -472,5 +469,8 @@ function getOutputs(): ReturnType<GasFunctions['getOutputs']> {
   tprData.sort((a, b) => a.line.localeCompare(b.line));
   dirbonData.sort((a, b) => a.line.localeCompare(b.line));
 
-  return { tpr: tprData, dirbon: dirbonData };
+  return {
+    outputs: { tpr: tprData, dirbon: dirbonData },
+    problems,
+  };
 }

@@ -32,7 +32,7 @@ export default function DateTime() {
   const shiftDisplay = isWithinShift('1', now) ? 'Shift 1' : 'Shift 2';
 
   return (
-    <div className="flex justify-between sm:items-end mt-3 mb-2 px-2">
+    <div className="flex justify-between mt-3 mb-2 px-2">
       <div className="text-start">
         <h2 className="font-bold text-2xl sm:text-3xl tabular-nums">
           {timeDisplay}
@@ -43,7 +43,6 @@ export default function DateTime() {
         <h2 className="font-bold text-2xl sm:text-3xl tabular-nums">
           {shiftDisplay}
         </h2>
-        <h3 className="font-light text-lg sm:text-xl">Jam ke-1</h3>
       </div>
     </div>
   );
