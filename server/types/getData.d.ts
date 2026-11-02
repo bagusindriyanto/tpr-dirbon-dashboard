@@ -3,6 +3,7 @@ type ActualOutputRow = {
   shift: Shift;
   line: string;
   style: string;
+  parts: string;
   operator: string;
   hour: number;
   output: number;

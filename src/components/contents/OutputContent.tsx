@@ -32,11 +32,11 @@ export default function OutputContent({ section }: OutputContentProps) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
+    const interval = setInterval(() => {
       setTick((value) => value + 1);
     }, 8_000);
 
-    return () => window.clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
 
   if (isPending)

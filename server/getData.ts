@@ -4,6 +4,7 @@ const ACTUAL_COLUMN_ALIASES = {
   hour: ['jam ke'],
   line: ['line'],
   style: ['grup style'],
+  parts: ['part'],
   output: ['actual output jam'],
   repair: ['repair'],
   reject: ['reject'],
@@ -24,7 +25,7 @@ const TARGET_COLUMN_ALIASES = {
   style: ['grup style'],
   target: ['target komitmen hari'],
   totalWorkingHour: ['jk'],
-  operator: ['operator'],
+  operator: ['helper line'],
   manPower: ['mp'],
 } as const;
 
@@ -93,6 +94,7 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
     'hour',
     'line',
     'style',
+    'parts',
     'output',
     'repair',
     'reject',
@@ -122,11 +124,15 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
     const style = toString(row[columns.style]);
     if (!style || style === '-') continue;
 
+    const parts = toString(row[columns.parts]);
+    if (!parts || parts === '-') continue;
+
     rows.push({
       date,
       shift,
       line,
       style,
+      parts,
       operator: '-',
       hour,
       output: toNumberOrZero(row[columns.output]),
@@ -283,6 +289,7 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
     return {
       id: `${first.line}-${first.date}-${first.shift}-${first.style}-${first.hour}`,
       style: first.style,
+      parts: first.parts,
       operator: first.operator,
       startHour: first.hour,
       endHour: last.hour,

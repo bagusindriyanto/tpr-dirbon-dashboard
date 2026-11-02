@@ -8,6 +8,7 @@ export type StyleHour = {
 export type StyleRun = {
   id: string;
   style: string;
+  parts: string;
   operator: string;
   startHour: number;
   endHour: number;

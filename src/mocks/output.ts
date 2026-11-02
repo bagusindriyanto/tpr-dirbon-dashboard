@@ -17,6 +17,13 @@ const STYLE_POOL = [
   'TR-5E4420-COVER VALVE',
 ] as const;
 
+const PARTS_POOL = [
+  'DRN/ DIRBON ON BODY BACK, DRN/ DIRBON ON THUMB BACK',
+  'DRN/ DIRBON ON THUMB BACK',
+  'TPR ON BODY BACK',
+  'TPR "HEAVY" ON TAB',
+] as const;
+
 const PIC_POOL = [
   'MT',
   'Produksi',
@@ -28,6 +35,7 @@ function createMockRun(
   line: string,
   shift: Shift,
   style: string,
+  parts: string,
   startHour: number,
   workingHour: number,
 ): StyleRun {
@@ -59,6 +67,7 @@ function createMockRun(
   return {
     id: `${line}-${shift}-${style}-${startHour}`,
     style,
+    parts,
     operator,
     startHour,
     endHour: startHour + workingHour - 1,
@@ -101,8 +110,15 @@ export const createMockOutput = (line: string): Output => {
         : faker.helpers.arrayElement(
             STYLE_POOL.filter((candidate) => candidate !== previousStyle),
           );
+    const previousParts = runs[runs.length - 1]?.parts;
+    const parts =
+      index === runCount - 1 && repeatFirstStyle && runs.length > 0
+        ? runs[0].parts
+        : faker.helpers.arrayElement(
+            PARTS_POOL.filter((candidate) => candidate !== previousParts),
+          );
 
-    runs.push(createMockRun(line, shift, style, nextHour, workingHour));
+    runs.push(createMockRun(line, shift, style, parts, nextHour, workingHour));
     nextHour += workingHour;
 
     if (
