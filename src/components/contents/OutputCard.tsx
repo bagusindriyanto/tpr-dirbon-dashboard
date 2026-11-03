@@ -1,7 +1,8 @@
 import type { Output } from '@/types/output';
 import { cn } from '@/lib/utils';
-import { isWithinShift, PRODUCTION_HOURS } from '@/lib/shift';
+import { PRODUCTION_HOURS } from '@/lib/shift';
 import { AlertTriangleIcon, CheckCircle2Icon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const percentFormat = new Intl.NumberFormat('id', {
   style: 'percent',
@@ -107,15 +108,38 @@ function Kpi({
   value: string;
   className?: string;
 }) {
+  const [prevValue, setPrevValue] = useState(value);
+  const [displayValue, setDisplayValue] = useState(value);
+  const [isFading, setIsFading] = useState(false);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setIsFading(true);
+  }
+
+  useEffect(() => {
+    if (isFading) {
+      const timer = setTimeout(() => {
+        setDisplayValue(value);
+        setIsFading(false);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [isFading, value]);
+
   return (
     <div className="flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 bg-card">
       <dt className="text-[8px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </dt>
       <dd
-        className={cn('text-xs font-bold leading-none tabular-nums', className)}
+        className={cn(
+          'text-xs font-bold leading-none tabular-nums transition-all duration-300 ease-in-out',
+          isFading ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0',
+          className,
+        )}
       >
-        {value}
+        {displayValue}
       </dd>
     </div>
   );
@@ -124,18 +148,8 @@ function Kpi({
 export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
   const hasPerformance = Number.isFinite(item.performance);
   const tone = performanceTone(item.performance);
-  const latestHour = item.data.reduce(
-    (max, run) => Math.max(max, run.endHour),
-    0,
-  );
-  const latestRunIndex = item.data.findIndex(
-    (run) => latestHour >= run.startHour && latestHour <= run.endHour,
-  );
-  const activeIndex = isWithinShift(item.shift)
-    ? latestRunIndex
-    : item.data.length > 0
-      ? tick % item.data.length
-      : -1;
+
+  const activeIndex = item.data.length > 0 ? tick % item.data.length : -1;
   const activeRun = activeIndex >= 0 ? item.data[activeIndex] : undefined;
   const balance = (activeRun?.totalOutput ?? 0) - (activeRun?.totalTarget ?? 0);
   const runByHour = new Map<number, number>();
@@ -160,7 +174,8 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           </h2>
           {activeRun?.operator && (
             <span
-              className="max-w-full truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+              key={activeRun.operator}
+              className="max-w-full truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground animate-in fade-in duration-300"
               title={activeRun.operator}
             >
               {activeRun.operator}
@@ -169,18 +184,23 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
         </div>
 
         <div className="flex flex-col bg-card col-span-6 items-center justify-center p-2 min-w-0">
-          <p
-            className="line-clamp-2 text-center font-bold leading-tight max-w-full"
-            title={activeRun?.style ?? 'Tidak ada style aktif'}
+          <div
+            key={activeRun?.style ?? activeIndex}
+            className="flex flex-col items-center justify-center w-full animate-in fade-in duration-300"
           >
-            {activeRun?.style ?? 'Tidak ada style aktif'}
-          </p>
-          <p
-            className="text-xs text-center text-muted-foreground truncate max-w-full"
-            title={activeRun?.parts ?? 'Tidak ada part'}
-          >
-            {activeRun?.parts ? `(${activeRun.parts})` : 'Tidak ada part'}
-          </p>
+            <p
+              className="line-clamp-2 text-center font-bold leading-tight max-w-full"
+              title={activeRun?.style ?? 'Tidak ada style aktif'}
+            >
+              {activeRun?.style ?? 'Tidak ada style aktif'}
+            </p>
+            <p
+              className="text-xs text-center text-muted-foreground truncate max-w-full"
+              title={activeRun?.parts ?? 'Tidak ada part'}
+            >
+              {activeRun?.parts ? `(${activeRun.parts})` : 'Tidak ada part'}
+            </p>
+          </div>
         </div>
 
         <div className="col-span-2 grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-px min-h-14">
@@ -218,7 +238,12 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           </span>
         </div>
         <div className={cn('col-span-8 dashboard-cell', tone.solid)}>
-          <span className="text-2xl font-black leading-none tabular-nums">
+          <span
+            key={
+              activeRun ? `${activeRun.style}-${activeRun.totalOutput}` : 'none'
+            }
+            className="text-2xl font-black leading-none tabular-nums animate-in fade-in zoom-in-95 duration-300"
+          >
             {activeRun ? numberFormat.format(activeRun.totalOutput) : '–'}
           </span>
         </div>
@@ -242,7 +267,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
               <dd
                 key={hour}
                 className={cn(
-                  'flex min-w-0 flex-col items-center justify-end gap-1 px-0.5 pb-1 pt-1.5',
+                  'flex min-w-0 flex-col items-center justify-end gap-1 px-0.5 pb-1 pt-1.5 transition-all duration-500 ease-in-out',
                   hourTone.solid,
                   run && !isActive && 'grayscale opacity-40',
                 )}
