@@ -170,7 +170,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
 
         <div className="flex flex-col bg-card col-span-6 items-center justify-center p-2 min-w-0">
           <p
-            className="line-clamp-2 text-center font-semibold leading-tight max-w-full"
+            className="line-clamp-2 text-center font-bold leading-tight max-w-full"
             title={activeRun?.style ?? 'Tidak ada style aktif'}
           >
             {activeRun?.style ?? 'Tidak ada style aktif'}

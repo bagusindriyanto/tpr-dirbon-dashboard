@@ -147,6 +147,36 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
   return rows;
 }
 
+// Satu style/jam bisa terdiri dari beberapa baris size/part. Jumlahkan
+// output, repair, dan reject sebelum membentuk style run.
+function aggregateActualOutputRows(
+  rows: ActualOutputRow[],
+): ActualOutputRow[] {
+  const aggregated = new Map<string, ActualOutputRow>();
+
+  for (const row of rows) {
+    const key = JSON.stringify([
+      row.date,
+      row.line,
+      row.shift,
+      row.style,
+      row.hour,
+    ]);
+    const current = aggregated.get(key);
+
+    if (!current) {
+      aggregated.set(key, { ...row });
+      continue;
+    }
+
+    current.output += row.output;
+    current.repair += row.repair;
+    current.reject += row.reject;
+  }
+
+  return [...aggregated.values()];
+}
+
 function readWipReferences(data: CellValue[][]): Map<string, number> {
   const references = new Map<string, number>();
 
@@ -391,7 +421,9 @@ function getData(): ReturnType<GasFunctions['getData']> {
   const wipByStyle = readWipReferences(wipData);
   const targetByStyle = readTargetReferences(targetsData);
   const problems = getProblems();
-  const rows = readActualOutputRows(actualData).map((row) => {
+  const rows = aggregateActualOutputRows(
+    readActualOutputRows(actualData),
+  ).map((row) => {
     const key = createStyleReferenceKey(
       row.date,
       row.line,

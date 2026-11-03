@@ -1,6 +1,6 @@
 const SPREADSHEET_CONFIG = {
   tprDirbon: {
-    spreadsheetId: '1ky7rSxy20KQJ3zcZw0mVY4qE48G6CKAjAbb3zybEmKk',
+    spreadsheetId: '1t7IGaII6O-uvGXXZImQE8gxnXgXq2i0flef4YPuLxo8',
     sheetNames: {
       target: 'Target (DEV)',
       actual: 'Actual/Jam (DEV)',
