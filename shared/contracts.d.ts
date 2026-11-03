@@ -49,6 +49,14 @@ export type Problem = {
   id: number;
 };
 
+export type PlanningDistribution = {
+  id: string;
+  date: string;
+  style: string;
+  spo: string;
+  qty: number;
+};
+
 export type Section = 'tpr' | 'dirbon';
 export type Shift = '1' | '2';
 export type ProblemPIC = 'MT' | 'Produksi' | 'Trainer' | 'QC';
@@ -60,5 +68,6 @@ export type GasFunctions = {
   getData: () => {
     outputs: GasResult<Output>;
     problems: Problem[];
+    planning?: GasResult<PlanningDistribution>;
   };
 };

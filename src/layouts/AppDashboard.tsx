@@ -1,3 +1,4 @@
+import KanbanAside from '@/components/contents/KanbanAside';
 import OutputContent from '@/components/contents/OutputContent';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Tab } from '@/types/tab';
@@ -16,27 +17,32 @@ export default function AppDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('tpr');
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => {
-        if (isTabValue(value)) setActiveTab(value);
-      }}
-    >
-      <TabsList className="bg-background border">
+    <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <Tabs
+        className="min-w-0"
+        value={activeTab}
+        onValueChange={(value) => {
+          if (isTabValue(value)) setActiveTab(value);
+        }}
+      >
+        <TabsList className="bg-background border">
+          {TABS.map((tab) => (
+            <TabsTrigger
+              className="data-active:bg-primary data-active:text-primary-foreground data-active:hover:text-primary-foreground"
+              value={tab.value}
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
         {TABS.map((tab) => (
-          <TabsTrigger
-            className="data-active:bg-primary data-active:text-primary-foreground data-active:hover:text-primary-foreground"
-            value={tab.value}
-          >
-            {tab.label}
-          </TabsTrigger>
+          <TabsContent key={tab.value} value={tab.value}>
+            <OutputContent section={tab.value} />
+          </TabsContent>
         ))}
-      </TabsList>
-      {TABS.map((tab) => (
-        <TabsContent value={tab.value}>
-          <OutputContent section={tab.value} />
-        </TabsContent>
-      ))}
-    </Tabs>
+      </Tabs>
+
+      <KanbanAside />
+    </div>
   );
 }

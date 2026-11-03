@@ -13,5 +13,9 @@ export const gasMock: GasFunctions = {
       ),
     },
     problems: createMockProblems(),
+    planning: {
+      tpr: [],
+      dirbon: [],
+    },
   }),
 };
