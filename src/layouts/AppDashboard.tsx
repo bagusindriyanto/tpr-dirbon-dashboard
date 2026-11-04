@@ -1,8 +1,13 @@
 import KanbanAside from '@/components/contents/KanbanAside';
 import OutputContent from '@/components/contents/OutputContent';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { GetDataFilter } from '@/types/output';
 import type { Tab } from '@/types/tab';
 import { useState } from 'react';
+
+type AppDashboardProps = {
+  filter?: GetDataFilter;
+};
 
 const TABS = [
   { value: 'tpr', label: 'TPR' },
@@ -13,7 +18,7 @@ function isTabValue(value: unknown): value is Tab {
   return TABS.some((tab) => tab.value === value);
 }
 
-export default function AppDashboard() {
+export default function AppDashboard({ filter }: AppDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('tpr');
 
   return (
@@ -37,7 +42,7 @@ export default function AppDashboard() {
         </TabsList>
         {TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
-            <OutputContent section={tab.value} />
+            <OutputContent section={tab.value} filter={filter} />
           </TabsContent>
         ))}
       </Tabs>

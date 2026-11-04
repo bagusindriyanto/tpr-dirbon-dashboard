@@ -1,11 +1,12 @@
 import { runGas } from '@/lib/gas';
+import type { GetDataFilter } from '@/types/output';
 import type { Tab } from '@/types/tab';
 import { useQuery } from '@tanstack/react-query';
 
-export const useGetOutputs = (section: Tab) => {
+export const useGetOutputs = (section: Tab, filter?: GetDataFilter) => {
   return useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => runGas('getData'),
+    queryKey: ['dashboard', filter],
+    queryFn: () => runGas('getData', filter),
     select: (data) => data.outputs[section],
   });
 };

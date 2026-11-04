@@ -3,4 +3,5 @@ export type {
   StyleHour,
   StyleRun,
   Shift,
+  GetDataFilter,
 } from '../../shared/contracts';

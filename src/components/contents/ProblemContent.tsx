@@ -1,4 +1,5 @@
 import { useGetProblems } from '@/api/getProblems';
+import type { GetDataFilter } from '@/types/output';
 import type { ProblemPIC, ProblemStatus } from '@/types/problem';
 import { cn } from '@/lib/utils';
 import {
@@ -91,14 +92,18 @@ function PicBadge({ pic }: { pic: ProblemPIC }) {
   );
 }
 
-export default function ProblemContent() {
+type ProblemContentProps = {
+  filter?: GetDataFilter;
+};
+
+export default function ProblemContent({ filter }: ProblemContentProps) {
   const {
     data: problemData = [],
     isPending,
     isFetching,
     error,
     refetch,
-  } = useGetProblems();
+  } = useGetProblems(filter);
   const notStartedCount = problemData.filter(
     (problem) => problem.status === 'Belum Proses',
   ).length;
@@ -110,7 +115,7 @@ export default function ProblemContent() {
   ).length;
 
   return (
-    <Card size="sm" className="mt-2 shadow-lg">
+    <Card size="sm" className="shadow-lg">
       <CardHeader className="items-center">
         <CardTitle className="font-bold group-data-[size=sm]/card:text-xl">
           Daftar Problem

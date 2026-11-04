@@ -1,4 +1,3 @@
-import { isWithinShift } from '@/lib/shift';
 import { useEffect, useState } from 'react';
 
 const timeFormat = new Intl.DateTimeFormat('en-GB', {
@@ -29,21 +28,12 @@ export default function DateTime() {
   const timeDisplay = timeFormat.format(now);
   const dateDisplay = dateFormat.format(now);
 
-  const shiftDisplay = isWithinShift('1', now) ? 'Shift 1' : 'Shift 2';
-
   return (
-    <div className="flex justify-between mt-3 mb-2 px-2">
-      <div className="text-start">
-        <h2 className="font-bold text-2xl sm:text-3xl tabular-nums">
-          {timeDisplay}
-        </h2>
-        <h3 className="font-light text-lg sm:text-xl">{dateDisplay}</h3>
-      </div>
-      <div className="text-end">
-        <h2 className="font-bold text-2xl sm:text-3xl tabular-nums">
-          {shiftDisplay}
-        </h2>
-      </div>
+    <div className="flex flex-col">
+      <h2 className="font-bold text-xl sm:text-2xl tabular-nums">
+        {timeDisplay}
+      </h2>
+      <h3 className="font-light sm:text-lg">{dateDisplay}</h3>
     </div>
   );
 }

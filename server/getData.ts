@@ -98,7 +98,7 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const date = toString(row[columns.date]);
+    const date = toDateKey(row[columns.date]);
     const line = toString(row[columns.line]);
     const shift = toString(row[columns.shift]) as Shift;
 
@@ -180,7 +180,7 @@ function readWipReferences(data: CellValue[][]): Map<string, number> {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const date = toString(row[columns.date]);
+    const date = toDateKey(row[columns.date]);
     const line = toString(row[columns.line]);
     const shift = toString(row[columns.shift]) as Shift;
     const style = toString(row[columns.style]);
@@ -224,7 +224,7 @@ function readTargetReferences(data: CellValue[][]): Map<string, StyleTarget> {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const date = toString(row[columns.date]);
+    const date = toDateKey(row[columns.date]);
     const line = toString(row[columns.line]);
     const shift = toString(row[columns.shift]) as Shift;
     const style = toString(row[columns.style]);
@@ -323,8 +323,9 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
   });
 }
 
-function getProblems(): Problem[] {
+function getProblems(date = '', shift?: Shift): Problem[] {
   const now = new Date();
+  const isHistorical = Boolean(date);
   const {
     tprDirbon: { spreadsheetId, sheetNames },
   } = SPREADSHEET_CONFIG;
@@ -342,6 +343,7 @@ function getProblems(): Problem[] {
 
   const problems = data.reduce<Problem[]>((acc, row) => {
     const timestamp = toDate(row[0]);
+    const problemDate = toDateKey(row[6]);
     const line = toString(row[1]);
     const problem = toString(row[2]);
     const pic = toString(row[3]) as ProblemPIC;
@@ -355,7 +357,14 @@ function getProblems(): Problem[] {
         : 'Finish Proses';
     const elapsedTime = !finish ? 0 : now.getTime() - finish.getTime();
 
-    if (status === 'Finish Proses' && elapsedTime > 24 * 60 * 60 * 1000)
+    if (date && problemDate !== date) return acc;
+    if (shift && getShiftAt(timestamp) !== shift) return acc;
+
+    if (
+      !isHistorical &&
+      status === 'Finish Proses' &&
+      elapsedTime > 24 * 60 * 60 * 1000
+    )
       return acc;
 
     acc.push({
@@ -387,7 +396,20 @@ function getProblems(): Problem[] {
   return problems;
 }
 
-function getData(): ReturnType<GasFunctions['getData']> {
+function getData(
+  filter: GetDataFilter = {},
+): ReturnType<GasFunctions['getData']> {
+  const date = filter.date ? toDateKey(filter.date) : '';
+  const shift = filter.shift;
+
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`Format tanggal filter harus yyyy-MM-dd: ${date}`);
+  }
+
+  if (shift && shift !== '1' && shift !== '2') {
+    throw new Error(`Shift filter tidak valid: ${shift}`);
+  }
+
   const {
     tprDirbon: { spreadsheetId, sheetNames },
   } = SPREADSHEET_CONFIG;
@@ -405,9 +427,12 @@ function getData(): ReturnType<GasFunctions['getData']> {
   const actualData: CellValue[][] = actualSheet.getDataRange().getValues();
   const wipByStyle = readWipReferences(wipData);
   const targetByStyle = readTargetReferences(targetsData);
-  const problems = getProblems();
-  const rows = aggregateActualOutputRows(readActualOutputRows(actualData)).map(
-    (row) => {
+  const problems = getProblems(date, shift);
+  const rows = aggregateActualOutputRows(readActualOutputRows(actualData))
+    .filter(
+      (row) => (!date || row.date === date) && (!shift || row.shift === shift),
+    )
+    .map((row) => {
       const key = createStyleReferenceKey(
         row.date,
         row.line,
@@ -425,8 +450,7 @@ function getData(): ReturnType<GasFunctions['getData']> {
         hourlyTarget:
           target && totalWorkingHour > 0 ? target.target / totalWorkingHour : 0,
       };
-    },
-  );
+    });
   const activeProblemsByLine = new Map<string, Problem[]>();
 
   for (const problem of problems) {

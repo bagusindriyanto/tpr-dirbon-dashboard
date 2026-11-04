@@ -1,6 +1,6 @@
 export default function AppLegend() {
   return (
-    <div className="flex flex-wrap p-2 gap-y-1 gap-x-2 justify-around xl:justify-between mb-3">
+    <div className="flex flex-wrap p-2 gap-y-1 gap-x-2 justify-around xl:justify-between">
       <div className="flex flex-col xl:flex-row gap-x-5">
         <div className="flex items-center">
           <span className="font-semibold md:text-xl">Downtime:</span>

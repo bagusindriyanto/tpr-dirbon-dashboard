@@ -38,6 +38,7 @@ function toDate(value: CellValue): Date {
 
 const DATE_TIME_FORMAT = 'dd/MM/yyyy HH:mm:ss';
 const DATE_FORMAT = 'dd/MM/yyyy';
+const DATE_KEY_FORMAT = 'yyyy-MM-dd';
 
 function toDateTimeString(value: CellValue): string {
   if (value instanceof Date) {
@@ -82,12 +83,32 @@ function toNumberOrZero(value: CellValue): number {
   return result === '' ? 0 : result;
 }
 
-function getCurrentShift(): Shift {
+function toDateKey(value: CellValue): string {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new Error('Nilai tanggal tidak valid');
+    }
+
+    return Utilities.formatDate(
+      value,
+      Session.getScriptTimeZone(),
+      DATE_KEY_FORMAT,
+    );
+  }
+
+  return toString(value);
+}
+
+function getShiftAt(value: Date): Shift {
   const time = Utilities.formatDate(
-    new Date(),
+    value,
     Session.getScriptTimeZone(),
     'HH:mm',
   );
 
   return time >= '06:30' && time < '19:00' ? '1' : '2';
+}
+
+function getCurrentShift(): Shift {
+  return getShiftAt(new Date());
 }

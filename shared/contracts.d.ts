@@ -61,10 +61,16 @@ export type Shift = '1' | '2';
 export type ProblemPIC = 'MT' | 'Produksi' | 'Trainer' | 'QC';
 export type ProblemStatus = 'Belum Proses' | 'Dalam Proses' | 'Finish Proses';
 
+export type GetDataFilter = {
+  /** Tanggal awal shift dalam format yyyy-MM-dd. */
+  date?: string;
+  shift?: Shift;
+};
+
 export type GasResult<TData> = Record<Section, TData[]>;
 
 export type GasFunctions = {
-  getData: () => {
+  getData: (filter?: GetDataFilter) => {
     outputs: GasResult<Output>;
     problems: Problem[];
   };

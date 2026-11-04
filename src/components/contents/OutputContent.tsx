@@ -1,4 +1,5 @@
 import { useGetOutputs } from '@/api/getOutputs';
+import type { GetDataFilter } from '@/types/output';
 import type { Tab } from '@/types/tab';
 import { AlertTriangleIcon, InfoIcon, RefreshCwIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -17,16 +18,17 @@ import OutputCard from './OutputCard';
 
 type OutputContentProps = {
   section: Tab;
+  filter?: GetDataFilter;
 };
 
-export default function OutputContent({ section }: OutputContentProps) {
+export default function OutputContent({ section, filter }: OutputContentProps) {
   const {
     data: outputData,
     isPending,
     isFetching,
     error,
     refetch,
-  } = useGetOutputs(section);
+  } = useGetOutputs(section, filter);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {

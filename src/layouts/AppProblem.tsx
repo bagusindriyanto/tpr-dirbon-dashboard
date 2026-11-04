@@ -1,11 +1,14 @@
-import DateTime from '@/components/contents/DateTime';
 import ProblemContent from '@/components/contents/ProblemContent';
+import type { GetDataFilter } from '@/types/output';
 
-export default function AppProblem() {
+type AppProblemProps = {
+  filter?: GetDataFilter;
+};
+
+export default function AppProblem({ filter }: AppProblemProps) {
   return (
     <section>
-      <DateTime />
-      <ProblemContent />
+      <ProblemContent filter={filter} />
     </section>
   );
 }
