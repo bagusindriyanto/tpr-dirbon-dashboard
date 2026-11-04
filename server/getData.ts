@@ -271,12 +271,7 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
     const current = groups[groups.length - 1];
     const previous = current?.[current.length - 1];
 
-    if (
-      !current ||
-      !previous ||
-      previous.style !== row.style ||
-      row.hour !== previous.hour + 1
-    ) {
+    if (!current || !previous || previous.style !== row.style) {
       groups.push([row]);
       continue;
     }
@@ -287,12 +282,27 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
   return groups.map((runRows) => {
     const first = runRows[0];
     const last = runRows[runRows.length - 1];
-    const hours: StyleHour[] = runRows.map((row) => ({
-      hour: row.hour,
-      output: row.output,
-      repair: row.repair,
-      reject: row.reject,
-    }));
+    const startHour = first.hour;
+    const endHour = last.hour;
+    const rowsByHour = new Map(runRows.map((row) => [row.hour, row]));
+
+    // Gap jam di tengah run tetap dianggap jam produksi, sehingga jam yang
+    // tidak memiliki baris diisi dengan output/repair/reject 0.
+    const hours: StyleHour[] = Array.from(
+      { length: endHour - startHour + 1 },
+      (_, index) => {
+        const hour = startHour + index;
+        const row = rowsByHour.get(hour);
+
+        return {
+          hour,
+          output: row?.output ?? 0,
+          repair: row?.repair ?? 0,
+          reject: row?.reject ?? 0,
+        };
+      },
+    );
+
     const totalOutput = hours.reduce((sum, hour) => sum + hour.output, 0);
     const totalRepair = hours.reduce((sum, hour) => sum + hour.repair, 0);
     const totalReject = hours.reduce((sum, hour) => sum + hour.reject, 0);
@@ -306,8 +316,8 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
       style: first.style,
       parts: first.parts,
       operator: first.operator,
-      startHour: first.hour,
-      endHour: last.hour,
+      startHour,
+      endHour,
       hourlyTarget,
       totalTarget,
       totalOutput,
