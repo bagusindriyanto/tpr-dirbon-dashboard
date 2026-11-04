@@ -70,19 +70,6 @@ function createStyleReferenceKey(
   return JSON.stringify([date, line, shift, style]);
 }
 
-function toNumberOrZero(value: CellValue): number {
-  const result = toNullableNumber(value);
-  return result === '' ? 0 : result;
-}
-
-function getCurrentShift(): Shift {
-  const hour = Number(
-    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'H'),
-  );
-
-  return hour >= 6 && hour < 19 ? '1' : '2';
-}
-
 function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
   if (data.length < 2) return [];
 
@@ -149,9 +136,7 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
 
 // Satu style/jam bisa terdiri dari beberapa baris size/part. Jumlahkan
 // output, repair, dan reject sebelum membentuk style run.
-function aggregateActualOutputRows(
-  rows: ActualOutputRow[],
-): ActualOutputRow[] {
+function aggregateActualOutputRows(rows: ActualOutputRow[]): ActualOutputRow[] {
   const aggregated = new Map<string, ActualOutputRow>();
 
   for (const row of rows) {
@@ -421,27 +406,27 @@ function getData(): ReturnType<GasFunctions['getData']> {
   const wipByStyle = readWipReferences(wipData);
   const targetByStyle = readTargetReferences(targetsData);
   const problems = getProblems();
-  const rows = aggregateActualOutputRows(
-    readActualOutputRows(actualData),
-  ).map((row) => {
-    const key = createStyleReferenceKey(
-      row.date,
-      row.line,
-      row.shift,
-      row.style,
-    );
-    const target = targetByStyle.get(key);
-    const totalWorkingHour = target?.totalWorkingHour ?? 0;
+  const rows = aggregateActualOutputRows(readActualOutputRows(actualData)).map(
+    (row) => {
+      const key = createStyleReferenceKey(
+        row.date,
+        row.line,
+        row.shift,
+        row.style,
+      );
+      const target = targetByStyle.get(key);
+      const totalWorkingHour = target?.totalWorkingHour ?? 0;
 
-    return {
-      ...row,
-      operator: target?.operator ?? '-',
-      manPower: target?.manPower ?? 0,
-      wip: wipByStyle.get(key) ?? 0,
-      hourlyTarget:
-        target && totalWorkingHour > 0 ? target.target / totalWorkingHour : 0,
-    };
-  });
+      return {
+        ...row,
+        operator: target?.operator ?? '-',
+        manPower: target?.manPower ?? 0,
+        wip: wipByStyle.get(key) ?? 0,
+        hourlyTarget:
+          target && totalWorkingHour > 0 ? target.target / totalWorkingHour : 0,
+      };
+    },
+  );
   const activeProblemsByLine = new Map<string, Problem[]>();
 
   for (const problem of problems) {
@@ -505,4 +490,76 @@ function getData(): ReturnType<GasFunctions['getData']> {
     outputs: { tpr: tprData, dirbon: dirbonData },
     problems,
   };
+}
+
+function getOutstandingData(): ReturnType<GasFunctions['getOutstandingData']> {
+  const {
+    distribusi: { spreadsheetId, sheetNames },
+  } = SPREADSHEET_CONFIG;
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = spreadsheet.getSheetByName(sheetNames.supply);
+
+  if (!sheet) {
+    throw new Error(`Sheet '${sheetNames.supply}' tidak tersedia.`);
+  }
+
+  const [, , ...data]: CellValue[][] = sheet
+    .getDataRange()
+    .getValues()
+    .filter((row) => !!row[0]);
+
+  const getOutstanding = (
+    balance: number,
+    finish: number,
+    cummSupply: number,
+  ) => {
+    if (finish < cummSupply) {
+      return balance * -1;
+    }
+    return balance * -1 - (finish - cummSupply);
+  };
+
+  const tprOutstandings: Outstanding[] = [];
+  const dirbonOutstandings: Outstanding[] = [];
+
+  data.forEach((row) => {
+    const date = toDateString(row[1]);
+    const spo = toString(row[2]);
+    const style = toString(row[3]);
+
+    const cummSupply = toNumber(row[5]);
+    const balance = toNumber(row[6]);
+    const finishTpr = toNullableNumber(row[15]);
+    const finishDirbon = toNullableNumber(row[14]);
+
+    if (finishTpr === '' || finishDirbon === '' || balance >= 0) return;
+
+    const tprOutstanding = getOutstanding(balance, finishTpr, cummSupply);
+    const dirbonOutstanding = getOutstanding(balance, finishDirbon, cummSupply);
+
+    if (tprOutstanding > 0) {
+      tprOutstandings.push({
+        date,
+        spo: spo === '#N/A' ? 'Loading...' : spo,
+        style: style === '#N/A' ? 'Loading...' : style,
+        qty: tprOutstanding,
+      });
+    }
+
+    if (dirbonOutstanding > 0) {
+      dirbonOutstandings.push({
+        date,
+        spo: spo === '#N/A' ? 'Loading...' : spo,
+        style: style === '#N/A' ? 'Loading...' : style,
+        qty: dirbonOutstanding,
+      });
+    }
+  });
+
+  const result = {
+    tpr: tprOutstandings.sort((a, b) => b.qty - a.qty),
+    dirbon: dirbonOutstandings.sort((a, b) => b.qty - a.qty),
+  };
+
+  return result;
 }

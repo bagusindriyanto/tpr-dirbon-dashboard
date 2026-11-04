@@ -7,3 +7,4 @@ type Problem = import('../../shared/contracts').Problem;
 type ProblemPIC = import('../../shared/contracts').ProblemPIC;
 type ProblemStatus = import('../../shared/contracts').ProblemStatus;
 type Shift = import('../../shared/contracts').Shift;
+type Outstanding = import('../../shared/contracts').Outstanding;

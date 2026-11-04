@@ -37,6 +37,7 @@ function toDate(value: CellValue): Date {
 }
 
 const DATE_TIME_FORMAT = 'dd/MM/yyyy HH:mm:ss';
+const DATE_FORMAT = 'dd/MM/yyyy';
 
 function toDateTimeString(value: CellValue): string {
   if (value instanceof Date) {
@@ -55,4 +56,38 @@ function toDateTimeString(value: CellValue): string {
   }
 
   return String(value).trim();
+}
+
+function toDateString(value: CellValue): string {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new Error('Nilai tanggal tidak valid');
+    }
+    return Utilities.formatDate(
+      value,
+      Session.getScriptTimeZone(),
+      DATE_FORMAT,
+    );
+  }
+
+  if (!value) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
+function toNumberOrZero(value: CellValue): number {
+  const result = toNullableNumber(value);
+  return result === '' ? 0 : result;
+}
+
+function getCurrentShift(): Shift {
+  const time = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    'HH:mm',
+  );
+
+  return time >= '06:30' && time < '19:00' ? '1' : '2';
 }

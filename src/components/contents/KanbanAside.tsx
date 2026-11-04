@@ -1,13 +1,8 @@
-import { EMPTY_PLANNING, useGetPlanning } from '@/api/getPlanning';
-import type { PlanningDistribution } from '@/types/planning';
+import { useGetOutstandings } from '@/api/getOutstandings';
+import type { Outstanding } from '@/types/outstanding';
 import type { Tab } from '@/types/tab';
 import { Badge } from '../ui/badge';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
 import {
   Table,
@@ -17,6 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
+import type { GasResult } from '../../../shared/contracts';
+import { cn } from '@/lib/utils';
+
+const EMPTY_OUTSTANDING: GasResult<Outstanding> = {
+  tpr: [],
+  dirbon: [],
+};
 
 const SECTIONS = [
   { value: 'tpr', label: 'TPR' },
@@ -28,13 +30,13 @@ const COLUMN_COUNT = 4;
 
 const numberFormat = new Intl.NumberFormat('id');
 
-function PlanningTable({
+function OutstandingTable({
   label,
   items,
   isPending,
 }: {
   label: string;
-  items: PlanningDistribution[];
+  items: Outstanding[];
   isPending: boolean;
 }) {
   return (
@@ -88,17 +90,25 @@ function PlanningTable({
               </TableRow>
             ) : (
               items.map((item) => (
-                <TableRow key={item.id} className="even:bg-muted/40">
+                <TableRow key={item.spo} className="even:bg-muted/40">
                   <TableCell className="px-2 py-1.5 text-xs tabular-nums">
                     {item.date}
                   </TableCell>
                   <TableCell
-                    className="truncate px-2 py-1.5 text-xs"
+                    className={cn(
+                      'truncate px-2 py-1.5 text-xs',
+                      item.style === 'Loading...' && 'shimmer',
+                    )}
                     title={item.style}
                   >
                     {item.style}
                   </TableCell>
-                  <TableCell className="px-2 py-1.5 text-center text-xs">
+                  <TableCell
+                    className={cn(
+                      'px-2 py-1.5 text-center text-xs',
+                      item.spo === 'Loading...' && 'shimmer',
+                    )}
+                  >
                     {item.spo}
                   </TableCell>
                   <TableCell className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums">
@@ -115,11 +125,10 @@ function PlanningTable({
 }
 
 export default function KanbanAside() {
-  const { data = EMPTY_PLANNING, isPending } = useGetPlanning();
+  const { data = EMPTY_OUTSTANDING, isPending } = useGetOutstandings();
   const totalOutstanding = SECTIONS.reduce(
     (total, section) =>
-      total +
-      data[section.value].reduce((sum, item) => sum + item.qty, 0),
+      total + data[section.value].reduce((sum, item) => sum + item.qty, 0),
     0,
   );
 
@@ -134,14 +143,16 @@ export default function KanbanAside() {
 
         <CardContent className="gap-3 pt-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold">Outstanding Planning Distribusi</p>
+            <p className="text-xs font-semibold">
+              Outstanding Planning Distribusi
+            </p>
             <Badge variant="outline" className="shrink-0 whitespace-nowrap">
               Total Outstanding: {numberFormat.format(totalOutstanding)} pcs
             </Badge>
           </div>
 
           {SECTIONS.map((section) => (
-            <PlanningTable
+            <OutstandingTable
               key={section.value}
               label={section.label}
               items={data[section.value]}

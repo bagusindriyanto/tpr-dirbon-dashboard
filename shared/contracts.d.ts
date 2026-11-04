@@ -49,8 +49,7 @@ export type Problem = {
   id: number;
 };
 
-export type PlanningDistribution = {
-  id: string;
+export type Outstanding = {
   date: string;
   style: string;
   spo: string;
@@ -68,6 +67,6 @@ export type GasFunctions = {
   getData: () => {
     outputs: GasResult<Output>;
     problems: Problem[];
-    planning?: GasResult<PlanningDistribution>;
   };
+  getOutstandingData: () => GasResult<Outstanding>;
 };
