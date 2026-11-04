@@ -97,7 +97,7 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
             </EmptyContent>
           </Empty>
         ) : (
-          <div className="grid min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          <div className="output-grid grid min-w-0 gap-2 sm:gap-3">
             {outputData.map((item) => (
               <OutputCard key={item.line} item={item} tick={tick} />
             ))}

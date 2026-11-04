@@ -22,7 +22,7 @@ export default function AppDashboard({ filter }: AppDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('tpr');
 
   return (
-    <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_22rem]">
       <Tabs
         className="min-w-0"
         value={activeTab}

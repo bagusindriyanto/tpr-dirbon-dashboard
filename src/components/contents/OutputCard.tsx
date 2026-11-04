@@ -166,7 +166,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
   );
 
   return (
-    <article className="grid h-full min-w-0 overflow-hidden rounded-lg border border-border bg-border text-card-foreground shadow-sm grid-rows-subgrid row-span-7 grid-cols-10 gap-px">
+    <article className="grid h-full w-full min-w-0 overflow-hidden rounded-lg border border-border bg-border text-card-foreground shadow-sm grid-rows-subgrid row-span-7 grid-cols-10 gap-px">
       <header className="contents">
         <div className="bg-card col-span-2 p-2 flex flex-col items-center justify-center gap-1">
           <h2 className="text-2xl font-black leading-none tracking-tight">

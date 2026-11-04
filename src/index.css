@@ -185,3 +185,7 @@
 @utility dashboard-cell {
   @apply grid place-items-center p-1;
 }
+
+@utility output-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
