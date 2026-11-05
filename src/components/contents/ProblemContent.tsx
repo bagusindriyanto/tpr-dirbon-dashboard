@@ -232,7 +232,7 @@ export default function ProblemContent({ filter }: ProblemContentProps) {
               ) : (
                 problemData.map((problem) => (
                   <TableRow key={problem.id} className="even:bg-muted/40">
-                    <TableCell className="text-center tabular-nums text-muted-foreground">
+                    <TableCell className="text-center tabular-nums">
                       {problem.timestamp}
                     </TableCell>
                     <TableCell className="font-semibold text-center">
@@ -247,10 +247,10 @@ export default function ProblemContent({ filter }: ProblemContentProps) {
                     <TableCell className="text-center">
                       <StatusBadge status={problem.status} />
                     </TableCell>
-                    <TableCell className="text-center tabular-nums text-muted-foreground">
+                    <TableCell className="text-center tabular-nums">
                       {problem.start}
                     </TableCell>
-                    <TableCell className="text-center tabular-nums text-muted-foreground">
+                    <TableCell className="text-center tabular-nums">
                       {problem.finish}
                     </TableCell>
                   </TableRow>

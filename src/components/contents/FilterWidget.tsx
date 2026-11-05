@@ -19,6 +19,11 @@ type FilterBarProps = {
 
 const AUTO_VALUE = 'auto';
 
+const DATE_OPTIONS = [
+  { value: AUTO_VALUE, label: 'Otomatis' },
+  ...getWeekDateOptions(),
+] as const;
+
 const SHIFT_OPTIONS = [
   { value: AUTO_VALUE, label: 'Otomatis' },
   { value: '1', label: 'Shift 1' },
@@ -26,10 +31,6 @@ const SHIFT_OPTIONS = [
 ] as const;
 
 export default function FilterWidget({ value, onChange }: FilterBarProps) {
-  const dateOptions = [
-    { value: AUTO_VALUE, label: 'Otomatis' },
-    ...getWeekDateOptions(),
-  ];
   const hasFilter = Boolean(value.date || value.shift);
 
   return (
@@ -39,7 +40,7 @@ export default function FilterWidget({ value, onChange }: FilterBarProps) {
           Tanggal
         </span>
         <Select
-          items={dateOptions}
+          items={DATE_OPTIONS}
           value={value.date ?? AUTO_VALUE}
           onValueChange={(next) => {
             onChange({
@@ -54,7 +55,7 @@ export default function FilterWidget({ value, onChange }: FilterBarProps) {
           <SelectContent>
             <SelectGroup>
               <SelectLabel>Tanggal</SelectLabel>
-              {dateOptions.map((option) => (
+              {DATE_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

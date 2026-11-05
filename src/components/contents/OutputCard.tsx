@@ -2,7 +2,7 @@ import type { Output } from '@/types/output';
 import { cn } from '@/lib/utils';
 import { PRODUCTION_HOURS } from '@/lib/shift';
 import { AlertTriangleIcon, CheckCircle2Icon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 
 const percentFormat = new Intl.NumberFormat('id', {
   style: 'percent',
@@ -12,6 +12,8 @@ const percentFormat = new Intl.NumberFormat('id', {
 const numberFormat = new Intl.NumberFormat('id', {
   maximumFractionDigits: 2,
 });
+
+const HOURS = Array.from({ length: PRODUCTION_HOURS }, (_, index) => index + 1);
 
 const TONES = {
   none: {
@@ -108,38 +110,19 @@ function Kpi({
   value: string;
   className?: string;
 }) {
-  const [prevValue, setPrevValue] = useState(value);
-  const [displayValue, setDisplayValue] = useState(value);
-  const [isFading, setIsFading] = useState(false);
-
-  if (value !== prevValue) {
-    setPrevValue(value);
-    setIsFading(true);
-  }
-
-  useEffect(() => {
-    if (isFading) {
-      const timer = setTimeout(() => {
-        setDisplayValue(value);
-        setIsFading(false);
-      }, 180);
-      return () => clearTimeout(timer);
-    }
-  }, [isFading, value]);
-
   return (
     <div className="flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 bg-card">
       <dt className="text-[8px] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </dt>
       <dd
+        key={value}
         className={cn(
-          'text-xs font-bold leading-none tabular-nums transition-all duration-300 ease-in-out',
-          isFading ? 'opacity-0 -translate-y-1' : 'opacity-100 translate-y-0',
+          'text-xs font-bold leading-none tabular-nums animate-in fade-in duration-300 ease-in-out',
           className,
         )}
       >
-        {displayValue}
+        {value}
       </dd>
     </div>
   );
@@ -152,18 +135,16 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
   const activeIndex = item.data.length > 0 ? tick % item.data.length : -1;
   const activeRun = activeIndex >= 0 ? item.data[activeIndex] : undefined;
   const balance = (activeRun?.totalOutput ?? 0) - (activeRun?.totalTarget ?? 0);
-  const runByHour = new Map<number, number>();
 
-  item.data.forEach((run, index) => {
-    for (let hour = run.startHour; hour <= run.endHour; hour++) {
-      runByHour.set(hour, index);
-    }
-  });
-
-  const hours = Array.from(
-    { length: PRODUCTION_HOURS },
-    (_, index) => index + 1,
-  );
+  const runByHour = useMemo(() => {
+    const map = new Map<number, number>();
+    item.data.forEach((run, index) => {
+      for (let hour = run.startHour; hour <= run.endHour; hour++) {
+        map.set(hour, index);
+      }
+    });
+    return map;
+  }, [item.data]);
 
   return (
     <article className="grid h-full w-full min-w-0 overflow-hidden rounded-lg border border-border bg-border text-card-foreground shadow-sm grid-rows-subgrid row-span-7 grid-cols-10 gap-px">
@@ -252,7 +233,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           className="contents"
           aria-label={`Output per jam line ${item.line}`}
         >
-          {hours.map((hour) => {
+          {HOURS.map((hour) => {
             const runIndex = runByHour.get(hour);
             const run =
               runIndex !== undefined ? item.data[runIndex] : undefined;
