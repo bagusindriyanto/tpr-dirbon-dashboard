@@ -26,8 +26,8 @@ const DATE_OPTIONS = [
 
 const SHIFT_OPTIONS = [
   { value: AUTO_VALUE, label: 'Otomatis' },
-  { value: '1', label: 'Shift 1' },
-  { value: '2', label: 'Shift 2' },
+  { value: '1', label: 'Pagi' },
+  { value: '2', label: 'Malam' },
 ] as const;
 
 export default function FilterWidget({ value, onChange }: FilterBarProps) {

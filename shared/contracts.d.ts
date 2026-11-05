@@ -39,6 +39,7 @@ export type Output = {
 
 export type Problem = {
   timestamp: string;
+  shift: Shift;
   line: string;
   problem: string;
   pic: ProblemPIC;

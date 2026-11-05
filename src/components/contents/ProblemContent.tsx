@@ -1,6 +1,6 @@
 import { useGetProblems } from '@/api/getProblems';
 import type { GetDataFilter } from '@/types/output';
-import type { ProblemPIC, ProblemStatus } from '@/types/problem';
+import type { Shift, ProblemPIC, ProblemStatus } from '@/types/problem';
 import { cn } from '@/lib/utils';
 import {
   CircleCheckIcon,
@@ -12,6 +12,8 @@ import {
   PackageIcon,
   UserCog2Icon,
   WrenchIcon,
+  SunIcon,
+  MoonIcon,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -41,7 +43,12 @@ import {
 } from '../ui/table';
 
 const SKELETON_ROWS = 5;
-const COLUMN_COUNT = 7;
+const COLUMN_COUNT = 8;
+
+const SHIFT_BADGE_CLASSES: Record<Shift, string> = {
+  '1': 'border-amber-300 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  '2': 'border-violet-300 bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300',
+};
 
 const PIC_BADGE_CLASSES: Record<ProblemPIC, string> = {
   MT: 'border-zinc-300 bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
@@ -59,6 +66,19 @@ const STATUS_BADGE_CLASSES: Record<ProblemStatus, string> = {
   'Finish Proses':
     'border-success/40 bg-success/15 text-emerald-700 dark:text-success',
 };
+
+function ShiftBadge({ shift }: { shift: Shift }) {
+  return (
+    <Badge className={SHIFT_BADGE_CLASSES[shift]}>
+      {shift === '1' ? (
+        <SunIcon data-icon="inline-start" />
+      ) : (
+        <MoonIcon data-icon="inline-start" />
+      )}
+      {shift === '1' ? 'Pagi' : 'Malam'}
+    </Badge>
+  );
+}
 
 function StatusBadge({ status }: { status: ProblemStatus }) {
   return (
@@ -153,6 +173,9 @@ export default function ProblemContent({ filter }: ProblemContentProps) {
                 <TableHead className="min-w-48 text-center font-bold">
                   Problem
                 </TableHead>
+                <TableHead className="w-18 text-center font-bold">
+                  Shift
+                </TableHead>
                 <TableHead className="w-28 text-center font-bold">
                   PIC
                 </TableHead>
@@ -240,6 +263,9 @@ export default function ProblemContent({ filter }: ProblemContentProps) {
                     </TableCell>
                     <TableCell className="whitespace-normal">
                       {problem.problem}
+                    </TableCell>
+                    <TableCell className="font-semibold text-center">
+                      <ShiftBadge shift={problem.shift} />
                     </TableCell>
                     <TableCell className="text-center">
                       <PicBadge pic={problem.pic} />

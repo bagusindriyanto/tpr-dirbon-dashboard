@@ -349,7 +349,7 @@ function getProblems(date = '', shift?: Shift): Problem[] {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  const data: CellValue[][] = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  const data: CellValue[][] = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
 
   const problems = data.reduce<Problem[]>((acc, row) => {
     const timestamp = toDate(row[0]);
@@ -360,6 +360,7 @@ function getProblems(date = '', shift?: Shift): Problem[] {
     const start = row[4] instanceof Date ? toDate(row[4]) : null;
     const finish = row[5] instanceof Date ? toDate(row[5]) : null;
     const id = toNumber(row[7]);
+    const problemShift = toString(row[11]) as Shift;
     const status = !start
       ? 'Belum Proses'
       : !finish
@@ -368,7 +369,7 @@ function getProblems(date = '', shift?: Shift): Problem[] {
     const elapsedTime = !finish ? 0 : now.getTime() - finish.getTime();
 
     if (date && problemDate !== date) return acc;
-    if (shift && getShiftAt(timestamp) !== shift) return acc;
+    if (shift && problemShift !== shift) return acc;
 
     if (
       !isHistorical &&
@@ -379,6 +380,7 @@ function getProblems(date = '', shift?: Shift): Problem[] {
 
     acc.push({
       timestamp: toDateTimeString(timestamp),
+      shift: problemShift,
       line,
       problem,
       pic,

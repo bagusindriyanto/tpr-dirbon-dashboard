@@ -3,7 +3,10 @@ import type {
   Problem,
   ProblemPIC,
   ProblemStatus,
+  Shift,
 } from '../../shared/contracts';
+
+const SHIFT_POOL = ['1', '2'] as const satisfies readonly Shift[];
 
 const STATUS_POOL = [
   'Dalam Proses',
@@ -91,6 +94,7 @@ function createMockProblem(id: number): Problem {
 
   return {
     timestamp: formatDateTime(reportedAt),
+    shift: faker.helpers.arrayElement(SHIFT_POOL),
     line: faker.helpers.arrayElement(LINE_POOL),
     problem: faker.helpers.arrayElement(PROBLEM_POOL[pic]),
     pic,
