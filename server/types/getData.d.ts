@@ -12,6 +12,7 @@ type ActualOutputRow = {
   manPower: number;
   wip: number;
   hourlyTarget: number;
+  targetWorkingHour: number;
 };
 
 type StyleTarget = {

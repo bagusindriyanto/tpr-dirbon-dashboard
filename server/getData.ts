@@ -128,6 +128,7 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
       manPower: 0,
       wip: 0,
       hourlyTarget: 0,
+      targetWorkingHour: 0,
     });
   }
 
@@ -263,7 +264,10 @@ function selectLatestOutputGroup(
   );
 }
 
-function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
+function buildStyleRuns(
+  rows: ActualOutputRow[],
+  currentHour: number,
+): StyleRun[] {
   const sorted = [...rows].sort((a, b) => a.hour - b.hour);
   const groups: ActualOutputRow[][] = [];
 
@@ -279,17 +283,37 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
     current.push(row);
   }
 
-  return groups.map((runRows) => {
+  return groups.map((runRows, runIndex) => {
     const first = runRows[0];
     const last = runRows[runRows.length - 1];
     const startHour = first.hour;
-    const endHour = last.hour;
+    const actualEndHour = last.hour;
+    const nextStartHour = groups[runIndex + 1]?.[0].hour;
+
+    // Run terakhir masih dianggap berjalan sampai jam produksi saat ini,
+    // sehingga target tetap bertambah walaupun belum ada output baru.
+    // Run sebelumnya dibatasi sampai jam sebelum style berikutnya mulai.
+    const displayEndHour = nextStartHour
+      ? nextStartHour - 1
+      : Math.max(currentHour, actualEndHour);
+    const elapsedHour = Math.max(
+      0,
+      Math.min(displayEndHour, currentHour) - startHour + 1,
+    );
+
+    // JK dari target menentukan berapa jam target untuk style tersebut.
+    // Shift 2 bisa lebih pendek dari 10 jam, jadi target tidak boleh
+    // melewati target komitmen harian.
+    const targetWorkingHour =
+      first.targetWorkingHour > 0 ? first.targetWorkingHour : elapsedHour;
+    const workingHour = Math.min(elapsedHour, targetWorkingHour);
+
     const rowsByHour = new Map(runRows.map((row) => [row.hour, row]));
 
     // Gap jam di tengah run tetap dianggap jam produksi, sehingga jam yang
     // tidak memiliki baris diisi dengan output/repair/reject 0.
     const hours: StyleHour[] = Array.from(
-      { length: endHour - startHour + 1 },
+      { length: Math.max(0, displayEndHour - startHour + 1) },
       (_, index) => {
         const hour = startHour + index;
         const row = rowsByHour.get(hour);
@@ -306,7 +330,6 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
     const totalOutput = hours.reduce((sum, hour) => sum + hour.output, 0);
     const totalRepair = hours.reduce((sum, hour) => sum + hour.repair, 0);
     const totalReject = hours.reduce((sum, hour) => sum + hour.reject, 0);
-    const workingHour = hours.length;
     const hourlyTarget = first.hourlyTarget;
     const totalTarget = hourlyTarget * workingHour;
     const manPower = last.manPower;
@@ -317,7 +340,7 @@ function buildStyleRuns(rows: ActualOutputRow[]): StyleRun[] {
       parts: first.parts,
       operator: first.operator,
       startHour,
-      endHour,
+      endHour: displayEndHour,
       hourlyTarget,
       totalTarget,
       totalOutput,
@@ -461,8 +484,19 @@ function getData(
         wip: wipByStyle.get(key) ?? 0,
         hourlyTarget:
           target && totalWorkingHour > 0 ? target.target / totalWorkingHour : 0,
+        targetWorkingHour: totalWorkingHour,
       };
     });
+  const currentHourByGroup = new Map<string, number>();
+
+  for (const row of rows) {
+    const key = `${row.date}|${row.shift}`;
+    const currentHour = currentHourByGroup.get(key) ?? 0;
+    if (row.hour > currentHour) {
+      currentHourByGroup.set(key, row.hour);
+    }
+  }
+
   const activeProblemsByLine = new Map<string, Problem[]>();
 
   for (const problem of problems) {
@@ -491,7 +525,9 @@ function getData(
 
   for (const [line, lineGroups] of groupsByLine) {
     const selectedRows = selectLatestOutputGroup([...lineGroups.values()]);
-    const runs = buildStyleRuns(selectedRows);
+    const groupKey = `${selectedRows[0].date}|${selectedRows[0].shift}`;
+    const currentHour = currentHourByGroup.get(groupKey) ?? 0;
+    const runs = buildStyleRuns(selectedRows, currentHour);
 
     if (runs.length === 0) continue;
 
