@@ -14,7 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '../ui/empty';
-import OutputCard from './OutputCard';
+import OutputCarousel from './OutputCarousel';
 
 type OutputContentProps = {
   section: Tab;
@@ -97,11 +97,12 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
             </EmptyContent>
           </Empty>
         ) : (
-          <div className="output-grid grid min-w-0 gap-2 sm:gap-3">
-            {outputData.map((item) => (
-              <OutputCard key={item.line} item={item} tick={tick} />
-            ))}
-          </div>
+          <OutputCarousel
+            key={`${section}|${filter?.date ?? ''}|${filter?.shift ?? ''}`}
+            items={outputData}
+            tick={tick}
+            label={section === 'tpr' ? 'TPR' : 'Dirbon'}
+          />
         )
       ) : null}
     </>
