@@ -6,8 +6,7 @@ import type {
   StyleHour,
   StyleRun,
 } from '../../shared/contracts';
-
-const PRODUCTION_HOURS = 10;
+import { PRODUCTION_HOURS } from '../lib/shift';
 
 const STYLE_POOL = [
   'TR-1G1415-POTONG KOTAK',

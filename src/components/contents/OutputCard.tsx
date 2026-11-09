@@ -333,7 +333,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           label="Repair"
           value={
             activeRun
-              ? `${numberFormat.format(activeRun.totalRepair)} pcs`
+              ? `${numberFormat.format(activeRun.totalRepair)} pcs (${activeRun.totalOutput > 0 ? percentFormat.format(activeRun.totalRepair / activeRun.totalOutput) : '0%'})`
               : '–'
           }
         />
@@ -341,7 +341,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           label="Reject"
           value={
             activeRun
-              ? `${numberFormat.format(activeRun.totalReject)} pcs`
+              ? `${numberFormat.format(activeRun.totalReject)} pcs (${activeRun.totalOutput > 0 ? percentFormat.format(activeRun.totalReject / activeRun.totalOutput) : '0%'})`
               : '–'
           }
         />

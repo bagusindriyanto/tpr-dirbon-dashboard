@@ -247,7 +247,8 @@ function readTargetReferences(data: CellValue[][]): Map<string, StyleTarget> {
 function selectLatestOutputGroup(
   groups: ActualOutputRow[][],
 ): ActualOutputRow[] {
-  const currentShift = getCurrentShift();
+  const now = new Date();
+  const currentShift = getShiftByTimestamp(now);
   const sorted = [...groups].sort((a, b) => {
     const dateOrder = b[0].date.localeCompare(a[0].date);
     if (dateOrder !== 0) return dateOrder;

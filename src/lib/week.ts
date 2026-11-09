@@ -15,22 +15,22 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-export function getWeekDateOptions(now = new Date()): WeekDateOption[] {
-  const day = now.getDay();
-  const daysSinceMonday = (day + 6) % 7;
-  const monday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() - daysSinceMonday,
-  );
+export function getWeekDateOptions(): WeekDateOption[] {
+  const now = new Date();
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  return Array.from({ length: 6 }, (_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
+  const dates: Date[] = [];
 
-    return {
-      value: toDateKey(date),
-      label: DATE_LABEL_FORMAT.format(date),
-    };
-  });
+  while (dates.length < 6) {
+    if (date.getDay() !== 0) {
+      dates.push(new Date(date.getFullYear(), date.getMonth(), date.getDate()));
+    }
+
+    date.setDate(date.getDate() - 1);
+  }
+
+  return dates.map((date) => ({
+    value: toDateKey(date),
+    label: DATE_LABEL_FORMAT.format(date),
+  }));
 }

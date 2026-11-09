@@ -99,16 +99,15 @@ function toDateKey(value: CellValue): string {
   return toString(value);
 }
 
-function getShiftAt(value: Date): Shift {
-  const time = Utilities.formatDate(
-    value,
-    Session.getScriptTimeZone(),
-    'HH:mm',
-  );
+function getShiftByTimestamp(timestamp: Date): Shift {
+  const minute = timestamp.getMinutes();
+  const hour = timestamp.getHours();
+  const day = timestamp.getDay();
+  const currentMinute = hour * 60 + minute;
 
-  return time >= '06:30' && time < '19:00' ? '1' : '2';
-}
+  const isSunday = day === 0;
+  const lowerLimit = 6 * 60 + 30;
+  const upperLimit = isSunday ? 19 * 60 + 30 : 19 * 60;
 
-function getCurrentShift(): Shift {
-  return getShiftAt(new Date());
+  return currentMinute >= lowerLimit && currentMinute < upperLimit ? '1' : '2';
 }
