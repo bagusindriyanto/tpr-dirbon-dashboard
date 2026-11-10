@@ -372,7 +372,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
               aria-hidden="true"
             />
             <p className="text-[11px] font-medium leading-tight text-muted-foreground">
-              Tidak ada kendala
+              Tidak ada problem
             </p>
           </>
         )}

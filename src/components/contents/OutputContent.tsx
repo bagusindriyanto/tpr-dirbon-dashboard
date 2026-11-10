@@ -48,29 +48,57 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
 
   return (
     <>
-      {error && (
-        <Alert className="bg-destructive/10 text-red-800 border-destructive">
-          <AlertTriangleIcon />
-          <AlertTitle>Gagal memuat data</AlertTitle>
-          <AlertDescription className="text-zinc-900">
-            {error.message}
-          </AlertDescription>
-          <AlertAction>
-            <Button
-              variant="outline"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="text-foreground"
-            >
-              <RefreshCwIcon
-                className={isFetching ? 'animate-spin' : ''}
-                data-icon="inline-start"
-              />
-              Refresh data
-            </Button>
-          </AlertAction>
-        </Alert>
-      )}
+      {error ? (
+        !outputData || outputData.length === 0 ? (
+          <Empty className="border-2 bg-red-50 border-destructive">
+            <EmptyHeader>
+              <EmptyMedia
+                className="bg-destructive/10 text-destructive"
+                variant="icon"
+              >
+                <AlertTriangleIcon />
+              </EmptyMedia>
+              <EmptyTitle>Gagal memuat data</EmptyTitle>
+              <EmptyDescription>{error.message}</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button
+                variant="outline"
+                onClick={() => refetch()}
+                disabled={isFetching}
+              >
+                <RefreshCwIcon
+                  className={isFetching ? 'animate-spin' : ''}
+                  data-icon="inline-start"
+                />
+                Refresh data
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <Alert className="bg-red-50 text-destructive border-destructive">
+            <AlertTriangleIcon />
+            <AlertTitle>Gagal memuat data</AlertTitle>
+            <AlertDescription className="text-foreground">
+              {error.message}
+            </AlertDescription>
+            <AlertAction>
+              <Button
+                variant="outline"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="text-foreground"
+              >
+                <RefreshCwIcon
+                  className={isFetching ? 'animate-spin' : ''}
+                  data-icon="inline-start"
+                />
+                Refresh data
+              </Button>
+            </AlertAction>
+          </Alert>
+        )
+      ) : null}
 
       {outputData ? (
         outputData.length === 0 ? (

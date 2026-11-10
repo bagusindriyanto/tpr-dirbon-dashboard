@@ -10,6 +10,13 @@ const LARGE_PAGE_SIZE = 12;
 const LARGE_AUTO_ROTATE_MS = 25_000;
 const DEFAULT_PAGE_SIZE = 8;
 
+// Plafon lebar grid saat line yang tampil sedikit, agar card tidak melar.
+const SPARSE_WIDTH: Record<number, string> = {
+  1: 'max-w-md',
+  2: 'max-w-3xl',
+  3: 'max-w-5xl',
+};
+
 function getPageSize(): number {
   if (typeof window === 'undefined') return DEFAULT_PAGE_SIZE;
 
@@ -64,6 +71,7 @@ export default function OutputCarousel({
 
   const safePage = Math.min(page, Math.max(0, pageCount - 1));
   const pageItems = pages[safePage] ?? [];
+  const sparseWidth = SPARSE_WIDTH[pageItems.length] ?? '';
 
   useEffect(() => {
     if (pageCount <= 1 || isPaused) return;
@@ -88,7 +96,7 @@ export default function OutputCarousel({
     <section
       aria-label={`${label} carousel`}
       aria-roledescription="carousel"
-      className="min-w-0"
+      className="min-w-0 border rounded-lg p-1 bg-zinc-50"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -144,7 +152,10 @@ export default function OutputCarousel({
 
       <div
         key={safePage}
-        className="output-grid grid min-w-0 gap-2 animate-in fade-in duration-300 sm:gap-3"
+        className={cn(
+          'output-grid grid min-w-0 gap-2 animate-in fade-in duration-300 sm:gap-3',
+          sparseWidth && `mx-auto w-full ${sparseWidth}`,
+        )}
       >
         {pageItems.map((item) => (
           <OutputCard key={item.line} item={item} tick={tick} />
