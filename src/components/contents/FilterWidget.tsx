@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { XCircleIcon } from 'lucide-react';
+import { SunMoonIcon, MoonIcon, SunIcon, XCircleIcon } from 'lucide-react';
 
 type FilterBarProps = {
   value: GetDataFilter;
@@ -25,10 +25,27 @@ const DATE_OPTIONS = [
 ] as const;
 
 const SHIFT_OPTIONS = [
-  { value: AUTO_VALUE, label: 'Otomatis' },
-  { value: '1', label: 'Pagi' },
-  { value: '2', label: 'Malam' },
+  {
+    value: AUTO_VALUE,
+    label: 'Otomatis',
+    icon: SunMoonIcon,
+    colorClassName: 'text-foreground',
+  },
+  {
+    value: '1',
+    label: 'Pagi',
+    icon: SunIcon,
+    colorClassName: 'text-amber-600 dark:text-amber-400',
+  },
+  {
+    value: '2',
+    label: 'Malam',
+    icon: MoonIcon,
+    colorClassName: 'text-indigo-600 dark:text-indigo-400',
+  },
 ] as const;
+
+type ShiftValue = (typeof SHIFT_OPTIONS)[number]['value'];
 
 export default function FilterWidget({ value, onChange }: FilterBarProps) {
   const hasFilter = Boolean(value.date || value.shift);
@@ -78,14 +95,38 @@ export default function FilterWidget({ value, onChange }: FilterBarProps) {
           }}
         >
           <SelectTrigger size="sm" className="w-full sm:w-36">
-            <SelectValue placeholder="Pilih shift" />
+            <SelectValue placeholder="Pilih shift">
+              {(selected: ShiftValue) => {
+                const option =
+                  SHIFT_OPTIONS.find((item) => item.value === selected) ??
+                  SHIFT_OPTIONS[0];
+
+                return (
+                  <span className="inline-flex items-center gap-2">
+                    <option.icon
+                      className={`size-4 ${option.colorClassName}`}
+                    />
+                    <span className={option.colorClassName}>
+                      {option.label}
+                    </span>
+                  </span>
+                );
+              }}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               <SelectLabel>Shift</SelectLabel>
               {SHIFT_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+                  <span className="inline-flex items-center gap-2">
+                    <option.icon
+                      className={`size-4 ${option.colorClassName}`}
+                    />
+                    <span className={option.colorClassName}>
+                      {option.label}
+                    </span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectGroup>
