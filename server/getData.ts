@@ -125,6 +125,7 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
       output: toNumberOrZero(row[columns.output]),
       repair: toNumberOrZero(row[columns.repair]),
       reject: toNumberOrZero(row[columns.reject]),
+      hasData: toNullableNumber(row[columns.output]) !== '',
       manPower: 0,
       wip: 0,
       hourlyTarget: 0,
@@ -158,6 +159,7 @@ function aggregateActualOutputRows(rows: ActualOutputRow[]): ActualOutputRow[] {
     current.output += row.output;
     current.repair += row.repair;
     current.reject += row.reject;
+    current.hasData = current.hasData || row.hasData;
   }
 
   return [...aggregated.values()];
@@ -324,6 +326,7 @@ function buildStyleRuns(
           output: row?.output ?? 0,
           repair: row?.repair ?? 0,
           reject: row?.reject ?? 0,
+          hasData: row?.hasData ?? false,
         };
       },
     );

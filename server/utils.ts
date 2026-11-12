@@ -102,12 +102,10 @@ function toDateKey(value: CellValue): string {
 function getShiftByTimestamp(timestamp: Date): Shift {
   const minute = timestamp.getMinutes();
   const hour = timestamp.getHours();
-  const day = timestamp.getDay();
   const currentMinute = hour * 60 + minute;
 
-  const isSunday = day === 0;
-  const lowerLimit = 6 * 60 + 30;
-  const upperLimit = isSunday ? 19 * 60 + 30 : 19 * 60;
+  const lowerLimit = 6 * 60;
+  const upperLimit = 19 * 60;
 
   return currentMinute >= lowerLimit && currentMinute < upperLimit ? '1' : '2';
 }

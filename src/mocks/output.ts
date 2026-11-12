@@ -45,17 +45,25 @@ function createMockRun(
 
   const hours: StyleHour[] = Array.from(
     { length: workingHour },
-    (_, index) => ({
-      hour: startHour + index,
-      output: faker.datatype.boolean({ probability: 0.08 })
-        ? 0
-        : faker.number.int({
-            min: Math.max(0, hourlyTarget - 8),
-            max: hourlyTarget + 6,
-          }),
-      repair: faker.number.int({ min: 0, max: 4 }),
-      reject: faker.number.int({ min: 0, max: 4 }),
-    }),
+    (_, index) => {
+      // Sesekali kosong agar tampilan "belum ada data" bisa diuji di dev.
+      const hasData = faker.datatype.boolean({ probability: 0.92 });
+
+      return {
+        hour: startHour + index,
+        output: !hasData
+          ? 0
+          : faker.datatype.boolean({ probability: 0.08 })
+            ? 0
+            : faker.number.int({
+                min: Math.max(0, hourlyTarget - 8),
+                max: hourlyTarget + 6,
+              }),
+        repair: hasData ? faker.number.int({ min: 0, max: 4 }) : 0,
+        reject: hasData ? faker.number.int({ min: 0, max: 4 }) : 0,
+        hasData,
+      };
+    },
   );
 
   const totalOutput = hours.reduce((sum, hour) => sum + hour.output, 0);

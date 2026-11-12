@@ -9,6 +9,8 @@ type ActualOutputRow = {
   output: number;
   repair: number;
   reject: number;
+  /** Apakah sel output benar-benar terisi (bukan kosong). */
+  hasData: boolean;
   manPower: number;
   wip: number;
   hourlyTarget: number;

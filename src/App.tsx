@@ -1,3 +1,4 @@
+import MissingOutputAlert from './components/contents/MissingOutputAlert';
 import AppDashboard from './layouts/AppDashboard';
 import AppFilter from './layouts/AppFilter';
 import AppLegend from './layouts/AppLegend';
@@ -20,6 +21,7 @@ function App() {
           <AppProblem filter={filter} />
         </div>
       </div>
+      <MissingOutputAlert filter={filter} />
     </main>
   );
 }

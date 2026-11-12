@@ -238,11 +238,13 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
             const run =
               runIndex !== undefined ? item.data[runIndex] : undefined;
             const isActive = runIndex === activeIndex;
-            const output =
-              run?.hours.find((entry) => entry.hour === hour)?.output ?? 0;
-            const hourTone = run
-              ? outputTone(output, run.hourlyTarget)
-              : TONES.none;
+            const hourEntry = run?.hours.find((entry) => entry.hour === hour);
+            const output = hourEntry?.output ?? 0;
+            const hasData = Boolean(hourEntry && hourEntry.hasData !== false);
+            const hourTone =
+              run && hasData
+                ? outputTone(output, run.hourlyTarget)
+                : TONES.none;
 
             return (
               <dd
@@ -253,13 +255,20 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
                   run && !isActive && 'grayscale opacity-40',
                 )}
                 title={
-                  run
-                    ? `Jam ke-${hour}: ${numberFormat.format(output)} pcs · ${run.style}`
-                    : `Jam ke-${hour}: tidak ada style`
+                  !run
+                    ? `Jam ke-${hour}: tidak ada style`
+                    : hasData
+                      ? `Jam ke-${hour}: ${numberFormat.format(output)} pcs · ${run.style}`
+                      : `Jam ke-${hour}: belum ada data · ${run.style}`
                 }
               >
-                <span className="text-xs font-semibold leading-none tabular-nums sm:text-sm">
-                  {run ? numberFormat.format(output) : '–'}
+                <span
+                  className={cn(
+                    'text-xs font-semibold leading-none tabular-nums sm:text-sm',
+                    !hasData && 'text-muted-foreground',
+                  )}
+                >
+                  {hasData ? numberFormat.format(output) : '–'}
                 </span>
               </dd>
             );

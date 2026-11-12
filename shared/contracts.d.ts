@@ -3,6 +3,8 @@ export type StyleHour = {
   output: number;
   repair: number;
   reject: number;
+  /** false = belum ada input untuk jam ini (beda dengan output 0). */
+  hasData?: boolean;
 };
 
 export type StyleRun = {
