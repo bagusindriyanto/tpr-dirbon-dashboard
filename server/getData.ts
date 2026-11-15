@@ -70,7 +70,7 @@ function createStyleReferenceKey(
   return JSON.stringify([date, line, shift, style]);
 }
 
-function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
+function readActualOutputs(data: CellValue[][]): ActualOutput[] {
   if (data.length < 2) return [];
 
   const headers = data[0].map(normalizeSheetHeader);
@@ -94,7 +94,7 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
     );
   }
 
-  const rows: ActualOutputRow[] = [];
+  const rows: ActualOutput[] = [];
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -138,8 +138,8 @@ function readActualOutputRows(data: CellValue[][]): ActualOutputRow[] {
 
 // Satu style/jam bisa terdiri dari beberapa baris size/part. Jumlahkan
 // output, repair, dan reject sebelum membentuk style run.
-function aggregateActualOutputRows(rows: ActualOutputRow[]): ActualOutputRow[] {
-  const aggregated = new Map<string, ActualOutputRow>();
+function aggregateActualOutputs(rows: ActualOutput[]): ActualOutput[] {
+  const aggregated = new Map<string, ActualOutput>();
 
   for (const row of rows) {
     const key = JSON.stringify([
@@ -246,9 +246,7 @@ function readTargetReferences(data: CellValue[][]): Map<string, StyleTarget> {
   return references;
 }
 
-function selectLatestOutputGroup(
-  groups: ActualOutputRow[][],
-): ActualOutputRow[] {
+function selectLatestOutputGroup(groups: ActualOutput[][]): ActualOutput[] {
   const now = new Date();
   const currentShift = getShiftByTimestamp(now);
   const sorted = [...groups].sort((a, b) => {
@@ -267,12 +265,9 @@ function selectLatestOutputGroup(
   );
 }
 
-function buildStyleRuns(
-  rows: ActualOutputRow[],
-  currentHour: number,
-): StyleRun[] {
+function buildStyleRuns(rows: ActualOutput[], currentHour: number): StyleRun[] {
   const sorted = [...rows].sort((a, b) => a.hour - b.hour);
-  const groups: ActualOutputRow[][] = [];
+  const groups: ActualOutput[][] = [];
 
   for (const row of sorted) {
     const current = groups[groups.length - 1];
@@ -467,7 +462,7 @@ function getData(
   const wipByStyle = readWipReferences(wipData);
   const targetByStyle = readTargetReferences(targetsData);
   const problems = getProblems(date, shift);
-  const rows = aggregateActualOutputRows(readActualOutputRows(actualData))
+  const rows = aggregateActualOutputs(readActualOutputs(actualData))
     .filter(
       (row) => (!date || row.date === date) && (!shift || row.shift === shift),
     )
@@ -493,6 +488,7 @@ function getData(
     });
   const currentHourByGroup = new Map<string, number>();
 
+  // Menentukan jam saat ini berdasarkan data output
   for (const row of rows) {
     const key = `${row.date}|${row.shift}`;
     const currentHour = currentHourByGroup.get(key) ?? 0;
@@ -512,7 +508,7 @@ function getData(
   }
 
   // Tanggal sudah merupakan tanggal awal shift; gunakan apa adanya.
-  const groupsByLine = new Map<string, Map<string, ActualOutputRow[]>>();
+  const groupsByLine = new Map<string, Map<string, ActualOutput[]>>();
 
   for (const row of rows) {
     const lineGroups = groupsByLine.get(row.line) ?? new Map();

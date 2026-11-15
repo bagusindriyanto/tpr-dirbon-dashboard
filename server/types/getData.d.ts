@@ -1,4 +1,4 @@
-type ActualOutputRow = {
+type ActualOutput = {
   date: string;
   shift: Shift;
   line: string;
