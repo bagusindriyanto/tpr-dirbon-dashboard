@@ -15,9 +15,8 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-export function getWeekDateOptions(): WeekDateOption[] {
-  const now = new Date();
-  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+export function getWeekDateOptions(today: Date): WeekDateOption[] {
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   const dates: Date[] = [];
 

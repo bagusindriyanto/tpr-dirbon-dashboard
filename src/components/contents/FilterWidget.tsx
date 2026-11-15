@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { SunMoonIcon, MoonIcon, SunIcon, XCircleIcon } from 'lucide-react';
+import { useToday } from '@/hooks/useToday';
 
 type FilterBarProps = {
   value: GetDataFilter;
@@ -18,11 +19,6 @@ type FilterBarProps = {
 };
 
 const AUTO_VALUE = 'auto';
-
-const DATE_OPTIONS = [
-  { value: AUTO_VALUE, label: 'Otomatis' },
-  ...getWeekDateOptions(),
-] as const;
 
 const SHIFT_OPTIONS = [
   {
@@ -50,6 +46,12 @@ type ShiftValue = (typeof SHIFT_OPTIONS)[number]['value'];
 export default function FilterWidget({ value, onChange }: FilterBarProps) {
   const hasFilter = Boolean(value.date || value.shift);
 
+  const today = useToday();
+  const dateOptions = [
+    { value: AUTO_VALUE, label: 'Otomatis' },
+    ...getWeekDateOptions(today),
+  ];
+
   return (
     <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-end sm:justify-end">
       <div className="flex flex-col gap-1">
@@ -57,7 +59,7 @@ export default function FilterWidget({ value, onChange }: FilterBarProps) {
           Tanggal
         </span>
         <Select
-          items={DATE_OPTIONS}
+          items={dateOptions}
           value={value.date ?? AUTO_VALUE}
           onValueChange={(next) => {
             onChange({
@@ -72,7 +74,7 @@ export default function FilterWidget({ value, onChange }: FilterBarProps) {
           <SelectContent>
             <SelectGroup>
               <SelectLabel>Tanggal</SelectLabel>
-              {DATE_OPTIONS.map((option) => (
+              {dateOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

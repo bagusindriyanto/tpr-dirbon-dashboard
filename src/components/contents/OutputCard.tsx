@@ -286,7 +286,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           }
         />
         <Kpi
-          label="Target"
+          label="Target Kumulatif"
           value={
             activeRun
               ? `${numberFormat.format(activeRun.totalTarget)} pcs`
