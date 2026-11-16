@@ -1,3 +1,5 @@
+const PRODUCTION_HOURS = 10;
+
 const SPREADSHEET_CONFIG = {
   tprDirbon: {
     spreadsheetId: '1ky7rSxy20KQJ3zcZw0mVY4qE48G6CKAjAbb3zybEmKk',
@@ -6,6 +8,7 @@ const SPREADSHEET_CONFIG = {
       actual: 'Actual/Jam (DEV)',
       wip: 'WIP Data (DEV)',
       kanban: 'Kanban',
+      schedule: 'Jam',
     },
   },
   distribusi: {

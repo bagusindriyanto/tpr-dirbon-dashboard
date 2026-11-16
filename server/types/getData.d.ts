@@ -23,3 +23,9 @@ type StyleTarget = {
   operator: string;
   manPower: number;
 };
+
+type TargetReferences = {
+  byStyle: Map<string, StyleTarget>;
+  /** Line yang punya target pada tanggal|shift tertentu. */
+  linesByGroup: Map<string, Set<string>>;
+};

@@ -106,7 +106,7 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
     if (shift !== '1' && shift !== '2') continue;
 
     const hour = toNumberOrZero(row[columns.hour]);
-    if (!Number.isInteger(hour) || hour < 1 || hour > 10) continue;
+    if (!Number.isInteger(hour) || hour < 1 || hour > PRODUCTION_HOURS) continue;
 
     const style = toString(row[columns.style]);
     if (!style || style === '-') continue;
@@ -200,10 +200,11 @@ function readWipReferences(data: CellValue[][]): Map<string, number> {
   return references;
 }
 
-function readTargetReferences(data: CellValue[][]): Map<string, StyleTarget> {
-  const references = new Map<string, StyleTarget>();
+function readTargetReferences(data: CellValue[][]): TargetReferences {
+  const byStyle = new Map<string, StyleTarget>();
+  const linesByGroup = new Map<string, Set<string>>();
 
-  if (data.length < 2) return references;
+  if (data.length < 2) return { byStyle, linesByGroup };
 
   const headers = data[0].map(normalizeSheetHeader);
   const columns = buildColumnMap(headers, TARGET_COLUMN_ALIASES);
@@ -235,15 +236,21 @@ function readTargetReferences(data: CellValue[][]): Map<string, StyleTarget> {
     if (!date || !line || !style) continue;
     if (shift !== '1' && shift !== '2') continue;
 
-    references.set(createStyleReferenceKey(date, line, shift, style), {
+    byStyle.set(createStyleReferenceKey(date, line, shift, style), {
       target: toNumberOrZero(row[columns.target]),
       totalWorkingHour: toNumberOrZero(row[columns.totalWorkingHour]),
       operator: toString(row[columns.operator]) || '-',
       manPower: toNumberOrZero(row[columns.manPower]),
     });
+
+    // Line dianggap aktif pada group ini hanya jika memiliki baris target.
+    const groupKey = `${date}|${shift}`;
+    const lines = linesByGroup.get(groupKey) ?? new Set<string>();
+    lines.add(line);
+    linesByGroup.set(groupKey, lines);
   }
 
-  return references;
+  return { byStyle, linesByGroup };
 }
 
 function selectLatestOutputGroup(groups: ActualOutput[][]): ActualOutput[] {
@@ -262,6 +269,21 @@ function selectLatestOutputGroup(groups: ActualOutput[][]): ActualOutput[] {
   return (
     latestDateGroups.find((group) => group[0].shift === currentShift) ??
     latestDateGroups[0]
+  );
+}
+
+// Mode otomatis hanya menerima group yang persis sama dengan tanggal dan
+// shift aktif. Tidak ada fallback ke data produksi sebelumnya.
+function selectAutoOutputGroup_(
+  groups: ActualOutput[][],
+  autoDate: string,
+  autoShift: Shift,
+): ActualOutput[] | null {
+  return (
+    groups.find(
+      (group) =>
+        group[0].date === autoDate && group[0].shift === autoShift,
+    ) ?? null
   );
 }
 
@@ -435,6 +457,7 @@ function getData(
 ): ReturnType<GasFunctions['getData']> {
   const date = filter.date ? toDateKey(filter.date) : '';
   const shift = filter.shift;
+  const isAuto = !date && !shift;
 
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(`Format tanggal filter harus yyyy-MM-dd: ${date}`);
@@ -451,16 +474,30 @@ function getData(
   const wipSheet = spreadsheet.getSheetByName(sheetNames.wip);
   const targetsSheet = spreadsheet.getSheetByName(sheetNames.target);
   const actualSheet = spreadsheet.getSheetByName(sheetNames.actual);
+  const scheduleSheet = isAuto
+    ? spreadsheet.getSheetByName(sheetNames.schedule)
+    : null;
 
-  if (!wipSheet || !targetsSheet || !actualSheet) {
+  if (
+    !wipSheet ||
+    !targetsSheet ||
+    !actualSheet ||
+    (isAuto && !scheduleSheet)
+  ) {
     throw new Error(`Sheet tidak tersedia.`);
   }
+
+  // Jadwal hanya dipakai saat tanggal dan shift sama-sama otomatis.
+  const schedule = scheduleSheet ? readCurrentSchedule_(scheduleSheet) : null;
+  const autoDate = schedule ? getScheduleDateKey_(schedule, new Date()) : '';
 
   const wipData: CellValue[][] = wipSheet.getDataRange().getValues();
   const targetsData: CellValue[][] = targetsSheet.getDataRange().getValues();
   const actualData: CellValue[][] = actualSheet.getDataRange().getValues();
   const wipByStyle = readWipReferences(wipData);
-  const targetByStyle = readTargetReferences(targetsData);
+  const targetReferences = readTargetReferences(targetsData);
+  const targetByStyle = targetReferences.byStyle;
+  const activeLinesByGroup = targetReferences.linesByGroup;
   const problems = getProblems(date, shift);
   const rows = aggregateActualOutputs(readActualOutputs(actualData))
     .filter(
@@ -507,7 +544,7 @@ function getData(
     activeProblemsByLine.set(problem.line, lineProblems);
   }
 
-  // Tanggal sudah merupakan tanggal awal shift; gunakan apa adanya.
+  // Tanggal pada data adalah tanggal produksi; filter memakai nilai apa adanya.
   const groupsByLine = new Map<string, Map<string, ActualOutput[]>>();
 
   for (const row of rows) {
@@ -524,9 +561,27 @@ function getData(
   const dirbonData: Output[] = [];
 
   for (const [line, lineGroups] of groupsByLine) {
-    const selectedRows = selectLatestOutputGroup([...lineGroups.values()]);
+    const groups = [...lineGroups.values()];
+    const selectedRows = schedule
+      ? selectAutoOutputGroup_(groups, autoDate, schedule.currentShift)
+      : selectLatestOutputGroup(groups);
+
+    if (!selectedRows) continue;
+
     const groupKey = `${selectedRows[0].date}|${selectedRows[0].shift}`;
-    const currentHour = currentHourByGroup.get(groupKey) ?? 0;
+    const activeLines = activeLinesByGroup.get(groupKey);
+
+    // Jika daftar target untuk group ini tersedia, hanya line di dalamnya
+    // yang ditampilkan. Line lama yang masih punya histori di sheet Actual
+    // tidak ikut muncul. Kalau target group belum tersedia, data actual tetap
+    // dipakai agar dashboard tidak kosong.
+    if (activeLines && !activeLines.has(line)) continue;
+
+    // Mode otomatis memakai jam dari sheet Jam. Mode filter tetap memakai
+    // jam terakhir yang tersedia pada data.
+    const currentHour = schedule
+      ? schedule.currentHour
+      : (currentHourByGroup.get(groupKey) ?? 0);
     const runs = buildStyleRuns(selectedRows, currentHour);
 
     if (runs.length === 0) continue;
