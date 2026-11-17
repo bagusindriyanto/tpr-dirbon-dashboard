@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertDialog,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -111,6 +112,7 @@ export default function MissingOutputAlert({
   const pageSize = useDialogPageSize();
   const [page, setPage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -151,9 +153,32 @@ export default function MissingOutputAlert({
     });
   }, [dirbon.data, isLive, now, tpr.data]);
 
+  const itemsKey = useMemo(
+    () =>
+      items
+        .map(
+          (item) =>
+            `${itemKey(item)}|${item.style}|${item.hours.join(',')}`,
+        )
+        .join(';'),
+    [items],
+  );
+
+  // Setelah semua output terisi, izinkan alert muncul lagi untuk kasus baru.
+  // Penyesuaian state saat render ini aman karena hanya terjadi satu kali
+  // ketika daftar berubah menjadi kosong.
+  if (items.length === 0 && dismissedKey !== null) {
+    setDismissedKey(null);
+  }
+
   const isUnavailable = tpr.isPending || dirbon.isPending;
   const hasError = tpr.isError || dirbon.isError;
-  const open = isLive && !isUnavailable && !hasError && items.length > 0;
+  const open =
+    isLive &&
+    !isUnavailable &&
+    !hasError &&
+    items.length > 0 &&
+    itemsKey !== dismissedKey;
   const isFetching = tpr.isFetching || dirbon.isFetching;
 
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
@@ -194,8 +219,8 @@ export default function MissingOutputAlert({
   return (
     <AlertDialog
       open={open}
-      onOpenChange={() => {
-        // Sengaja diabaikan: dialog hanya boleh tertutup saat data sudah diisi.
+      onOpenChange={(next) => {
+        if (!next) setDismissedKey(itemsKey);
       }}
     >
       {items.length > 0 && (
@@ -316,8 +341,8 @@ export default function MissingOutputAlert({
           )}
 
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Jam di atas sudah melewati toleransi 15 menit. Popup akan tertutup
-            otomatis setelah output diisi.
+            Jam di atas sudah melewati toleransi 15 menit. Popup akan muncul
+            lagi jika ada output baru yang belum diisi.
           </p>
 
           <AlertDialogFooter>
@@ -328,6 +353,7 @@ export default function MissingOutputAlert({
               />
               Refresh data
             </Button>
+            <AlertDialogCancel variant="secondary">Tutup</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       )}

@@ -214,18 +214,18 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
         title="Performance seluruh style di line ini"
       >
         <div className={cn('col-span-2 dashboard-cell', tone.solid)}>
-          <span className="font-bold leading-none tabular-nums">
-            {hasPerformance ? percentFormat.format(item.performance) : '–'}
-          </span>
-        </div>
-        <div className={cn('col-span-8 dashboard-cell', tone.solid)}>
           <span
             key={
               activeRun ? `${activeRun.style}-${activeRun.totalOutput}` : 'none'
             }
-            className="text-2xl font-black leading-none tabular-nums animate-in fade-in zoom-in-95 duration-300"
+            className="font-bold leading-none tabular-nums text-lg"
           >
             {activeRun ? numberFormat.format(activeRun.totalOutput) : '–'}
+          </span>
+        </div>
+        <div className={cn('col-span-8 dashboard-cell', tone.solid)}>
+          <span className="text-2xl font-black leading-none tabular-nums animate-in fade-in zoom-in-95 duration-300">
+            {hasPerformance ? percentFormat.format(item.performance) : '–'}
           </span>
         </div>
 

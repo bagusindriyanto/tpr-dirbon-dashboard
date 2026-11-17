@@ -106,7 +106,8 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
     if (shift !== '1' && shift !== '2') continue;
 
     const hour = toNumberOrZero(row[columns.hour]);
-    if (!Number.isInteger(hour) || hour < 1 || hour > PRODUCTION_HOURS) continue;
+    if (!Number.isInteger(hour) || hour < 1 || hour > PRODUCTION_HOURS)
+      continue;
 
     const style = toString(row[columns.style]);
     if (!style || style === '-') continue;
@@ -281,8 +282,7 @@ function selectAutoOutputGroup_(
 ): ActualOutput[] | null {
   return (
     groups.find(
-      (group) =>
-        group[0].date === autoDate && group[0].shift === autoShift,
+      (group) => group[0].date === autoDate && group[0].shift === autoShift,
     ) ?? null
   );
 }
@@ -495,9 +495,8 @@ function getData(
   const targetsData: CellValue[][] = targetsSheet.getDataRange().getValues();
   const actualData: CellValue[][] = actualSheet.getDataRange().getValues();
   const wipByStyle = readWipReferences(wipData);
-  const targetReferences = readTargetReferences(targetsData);
-  const targetByStyle = targetReferences.byStyle;
-  const activeLinesByGroup = targetReferences.linesByGroup;
+  const { byStyle: targetByStyle, linesByGroup: activeLinesByGroup } =
+    readTargetReferences(targetsData);
   const problems = getProblems(date, shift);
   const rows = aggregateActualOutputs(readActualOutputs(actualData))
     .filter(
