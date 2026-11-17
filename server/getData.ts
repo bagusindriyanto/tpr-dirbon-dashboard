@@ -294,7 +294,9 @@ function buildStyleRuns(rows: ActualOutput[], currentHour: number): StyleRun[] {
   return groups.map((runRows, runIndex) => {
     const first = runRows[0];
     const last = runRows[runRows.length - 1];
-    const startHour = first.hour;
+    // Run pertama dimulai dari jam 1 agar jam kosong sebelum actual pertama
+    // tetap terdeteksi sebagai output yang belum diinput.
+    const startHour = runIndex === 0 ? 1 : first.hour;
     const actualEndHour = last.hour;
     const nextStartHour = groups[runIndex + 1]?.[0].hour;
 
@@ -356,8 +358,9 @@ function buildStyleRuns(rows: ActualOutput[], currentHour: number): StyleRun[] {
       totalRepair,
       totalReject,
       manPower,
+      targetWorkingHour,
       workingHour,
-      manHour: manPower * workingHour,
+      manHour: manPower * targetWorkingHour,
       wip: last.wip,
       performance: totalTarget > 0 ? totalOutput / totalTarget : 0,
       hours,
@@ -374,10 +377,11 @@ function buildTargetOnlyRuns(
   return targets.map((target) => {
     const hourlyTarget =
       target.totalWorkingHour > 0 ? target.target / target.totalWorkingHour : 0;
-    const workingHour = Math.min(
-      PRODUCTION_HOURS,
-      target.totalWorkingHour > 0 ? target.totalWorkingHour : PRODUCTION_HOURS,
-    );
+    const targetWorkingHour =
+      target.totalWorkingHour > 0
+        ? target.totalWorkingHour
+        : PRODUCTION_HOURS;
+    const workingHour = Math.min(PRODUCTION_HOURS, targetWorkingHour);
     const hours: StyleHour[] = Array.from(
       { length: PRODUCTION_HOURS },
       (_, index) => ({
@@ -402,8 +406,9 @@ function buildTargetOnlyRuns(
       totalRepair: 0,
       totalReject: 0,
       manPower: target.manPower,
+      targetWorkingHour,
       workingHour,
-      manHour: target.manPower * workingHour,
+      manHour: target.manPower * targetWorkingHour,
       wip:
         wipByStyle.get(
           createStyleReferenceKey(

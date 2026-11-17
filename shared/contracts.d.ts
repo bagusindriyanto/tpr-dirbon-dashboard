@@ -20,6 +20,9 @@ export type StyleRun = {
   totalRepair: number;
   totalReject: number;
   manPower: number;
+  /** JK dari target: jam kerja yang direncanakan untuk style ini. */
+  targetWorkingHour: number;
+  /** Jam kerja berjalan sampai jam produksi saat ini (dibatasi JK). */
   workingHour: number;
   manHour: number;
   wip: number;

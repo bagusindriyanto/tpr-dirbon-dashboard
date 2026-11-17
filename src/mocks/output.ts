@@ -84,6 +84,7 @@ function createMockRun(
     totalRepair,
     totalReject,
     manPower,
+    targetWorkingHour: workingHour,
     workingHour,
     manHour: manPower * workingHour,
     wip,

@@ -336,7 +336,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
           label="Jam Kerja"
           value={
             activeRun
-              ? `${numberFormat.format(activeRun.workingHour)} jam`
+              ? `${numberFormat.format(activeRun.targetWorkingHour)} jam`
               : '–'
           }
         />
