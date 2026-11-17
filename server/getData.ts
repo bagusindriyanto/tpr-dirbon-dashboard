@@ -73,6 +73,57 @@ function createStyleReferenceKey(
   return JSON.stringify([date, line, shift, style]);
 }
 
+function createPartReferenceKey(
+  date: string,
+  line: string,
+  shift: Shift,
+  style: string,
+  part: string,
+): string {
+  return JSON.stringify([date, line, shift, style, part]);
+}
+
+function normalizePart(value: CellValue): string {
+  const part = toString(value);
+  return part === '-' ? '' : part;
+}
+
+/** JK/MP pada beberapa baris target yang sama harus konsisten. */
+function mergeUniqueNumber(current: number, next: number): number {
+  if (!current) return next;
+  if (!next) return current;
+  return Math.max(current, next);
+}
+
+function mergeMoldings(
+  current: MoldingItem[],
+  next: MoldingItem[],
+): MoldingItem[] {
+  const result = [...current];
+
+  for (const item of next) {
+    if (
+      !result.some(
+        (existing) =>
+          existing.size === item.size && existing.molding === item.molding,
+      )
+    ) {
+      result.push({ ...item });
+    }
+  }
+
+  return result;
+}
+
+function mergePartName(current: string, next: string): string {
+  if (!current) return next;
+  if (!next || current === next) return current;
+
+  const parts = new Set(current.split(' / ').filter(Boolean));
+  parts.add(next);
+  return [...parts].join(' / ');
+}
+
 function readActualOutputs(data: CellValue[][]): ActualOutput[] {
   if (data.length < 2) return [];
 
@@ -114,15 +165,16 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
     const style = toString(row[columns.style]);
     if (!style || style === '-') continue;
 
-    // Part adalah metadata target. Kolom part di actual opsional.
-    const parts = columns.parts >= 0 ? toString(row[columns.parts]) : '';
+    // Part adalah bagian identity target/actual. Kolomnya opsional agar sheet
+    // lama tetap bisa dibaca.
+    const parts = columns.parts >= 0 ? normalizePart(row[columns.parts]) : '';
 
     rows.push({
       date,
       shift,
       line,
       style,
-      parts: parts === '-' ? '' : parts,
+      parts,
       operator: '-',
       hour,
       output: toNumberOrZero(row[columns.output]),
@@ -133,13 +185,15 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
       wip: 0,
       hourlyTarget: 0,
       targetWorkingHour: 0,
+      targetKey: '',
+      moldings: [],
     });
   }
 
   return rows;
 }
 
-// Satu style/jam bisa terdiri dari beberapa baris size/part. Jumlahkan
+// Satu style/part/jam bisa terdiri dari beberapa baris size. Jumlahkan
 // output, repair, dan reject sebelum membentuk style run.
 function aggregateActualOutputs(rows: ActualOutput[]): ActualOutput[] {
   const aggregated = new Map<string, ActualOutput>();
@@ -150,6 +204,7 @@ function aggregateActualOutputs(rows: ActualOutput[]): ActualOutput[] {
       row.line,
       row.shift,
       row.style,
+      row.parts,
       row.hour,
     ]);
     const current = aggregated.get(key);
@@ -204,9 +259,10 @@ function readWipReferences(data: CellValue[][]): Map<string, number> {
 }
 
 function readTargetReferences(data: CellValue[][]): TargetReferences {
+  const byPart = new Map<string, StyleTarget>();
   const byStyle = new Map<string, StyleTarget>();
 
-  if (data.length < 2) return { byStyle };
+  if (data.length < 2) return { byPart, byStyle };
 
   const headers = data[0].map(normalizeSheetHeader);
   const columns = buildColumnMap(headers, TARGET_COLUMN_ALIASES);
@@ -241,39 +297,81 @@ function readTargetReferences(data: CellValue[][]): TargetReferences {
     if (!date || !line || !style) continue;
     if (shift !== '1' && shift !== '2') continue;
 
-    const key = createStyleReferenceKey(date, line, shift, style);
-    const current = byStyle.get(key);
-    const moldings = current?.moldings ?? [];
+    const part = normalizePart(row[columns.part]);
+    const key = createPartReferenceKey(date, line, shift, style, part);
+    const current = byPart.get(key);
     const size = toString(row[columns.size]);
     const molding = toString(row[columns.molding]);
+    const rowMoldings =
+      size && size !== '-' && molding && molding !== '-'
+        ? [{ size, molding }]
+        : [];
+    const moldings = mergeMoldings(current?.moldings ?? [], rowMoldings);
+    const target = toNumberOrZero(row[columns.target]);
+    const totalWorkingHour = toNumberOrZero(row[columns.totalWorkingHour]);
+    const operator = toString(row[columns.operator]) || '-';
+    const manPower = toNumberOrZero(row[columns.manPower]);
 
-    // Satu baris target mewakili satu pasangan size/isi molding. Baris lain
-    // dengan key yang sama menambah pasangan, bukan menimpa pasangan lama.
-    if (
-      size &&
-      size !== '-' &&
-      molding &&
-      molding !== '-' &&
-      !moldings.some((item) => item.size === size && item.molding === molding)
-    ) {
-      moldings.push({ size, molding });
+    if (current) {
+      // Satu part bisa terdiri dari beberapa size/molding. Target dijumlahkan,
+      // sedangkan JK/MP dianggap nilai yang sama untuk part tersebut.
+      current.target += target;
+      current.totalWorkingHour = mergeUniqueNumber(
+        current.totalWorkingHour,
+        totalWorkingHour,
+      );
+      current.manPower = mergeUniqueNumber(current.manPower, manPower);
+      current.operator =
+        current.operator === '-' && operator !== '-' ? operator : current.operator;
+      current.moldings = moldings;
+      continue;
     }
 
-    byStyle.set(key, {
+    byPart.set(key, {
       date,
       line,
       shift,
       style,
-      part: toString(row[columns.part]) || '-',
-      target: toNumberOrZero(row[columns.target]),
-      totalWorkingHour: toNumberOrZero(row[columns.totalWorkingHour]),
-      operator: toString(row[columns.operator]) || '-',
-      manPower: toNumberOrZero(row[columns.manPower]),
+      part,
+      target,
+      totalWorkingHour,
+      operator,
+      manPower,
       moldings,
     });
   }
 
-  return { byStyle };
+  // Fallback untuk actual lama yang kolom part-nya kosong. Target semua part
+  // pada style yang sama digabung agar tetap ada target pembanding.
+  for (const target of byPart.values()) {
+    const key = createStyleReferenceKey(
+      target.date,
+      target.line,
+      target.shift,
+      target.style,
+    );
+    const current = byStyle.get(key);
+
+    if (!current) {
+      byStyle.set(key, { ...target, moldings: [...target.moldings] });
+      continue;
+    }
+
+    current.target += target.target;
+    current.totalWorkingHour = mergeUniqueNumber(
+      current.totalWorkingHour,
+      target.totalWorkingHour,
+    );
+    current.manPower += target.manPower;
+    current.operator =
+      current.operator === '-' && target.operator !== '-'
+        ? target.operator
+        : current.operator;
+    current.part = mergePartName(current.part, target.part);
+    current.moldings = mergeMoldings(current.moldings, target.moldings);
+  }
+
+  return { byPart, byStyle };
 }
 
 function selectLatestTargetGroup(
@@ -301,58 +399,66 @@ function selectLatestTargetGroup(
 function buildStyleRuns(
   rows: ActualOutput[],
   currentHour: number,
-  moldingsByStyle: Map<string, MoldingItem[]>,
 ): StyleRun[] {
-  const sorted = [...rows].sort((a, b) => a.hour - b.hour);
-  const groups: ActualOutput[][] = [];
+  const sorted = [...rows].sort(
+    (a, b) =>
+      a.hour - b.hour ||
+      a.style.localeCompare(b.style, 'id') ||
+      a.parts.localeCompare(b.parts, 'id'),
+  );
+  const segments: {
+    key: string;
+    rows: ActualOutput[];
+    firstHour: number;
+  }[] = [];
 
   for (const row of sorted) {
-    const current = groups[groups.length - 1];
-    const previous = current?.[current.length - 1];
+    const key = JSON.stringify([row.style, row.parts]);
+    const current = segments[segments.length - 1];
+    const previous = current?.rows[current.rows.length - 1];
 
-    if (!current || !previous || previous.style !== row.style) {
-      groups.push([row]);
+    if (
+      !current ||
+      !previous ||
+      previous.style !== row.style ||
+      previous.parts !== row.parts
+    ) {
+      segments.push({ key, rows: [row], firstHour: row.hour });
       continue;
     }
 
-    current.push(row);
+    current.rows.push(row);
   }
 
-  return groups.map((runRows, runIndex) => {
-    const first = runRows[0];
-    const last = runRows[runRows.length - 1];
-    // Run pertama dimulai dari jam 1 agar jam kosong sebelum actual pertama
-    // tetap terdeteksi sebagai output yang belum diinput.
-    const startHour = runIndex === 0 ? 1 : first.hour;
-    const actualEndHour = last.hour;
-    const nextStartHour = groups[runIndex + 1]?.[0].hour;
-
-    // Run terakhir masih dianggap berjalan sampai jam produksi saat ini,
-    // sehingga target tetap bertambah walaupun belum ada output baru.
-    // Run sebelumnya dibatasi sampai jam sebelum style berikutnya mulai.
-    const displayEndHour = nextStartHour
-      ? nextStartHour - 1
-      : Math.max(currentHour, actualEndHour);
+  const segmentData = segments.map((segment, index) => {
+    const first = segment.rows[0];
+    const last = segment.rows[segment.rows.length - 1];
+    // Segmen pertama dimulai dari jam 1 agar jam kosong sebelum actual
+    // pertama tetap terdeteksi sebagai output yang belum diinput.
+    const startHour = index === 0 ? 1 : first.hour;
+    // Segmen yang mulai di jam yang sama (mis. beberapa part pada satu jam)
+    // tidak boleh saling memotong. Cari jam berikutnya yang lebih besar.
+    const nextStartHour = segments
+      .slice(index + 1)
+      .find((candidate) => candidate.firstHour > first.hour)?.firstHour;
+    const displayEndHour =
+      nextStartHour !== undefined
+        ? nextStartHour - 1
+        : Math.max(currentHour, last.hour);
     const elapsedHour = Math.max(
       0,
       Math.min(displayEndHour, currentHour) - startHour + 1,
     );
+    const rowsByHour = new Map(
+      segment.rows.map((row) => [row.hour, row]),
+    );
 
-    // JK dari target menentukan berapa jam target untuk style tersebut.
-    // Shift 2 bisa lebih pendek dari 10 jam, jadi target tidak boleh
-    // melewati target komitmen harian.
-    const targetWorkingHour =
-      first.targetWorkingHour > 0 ? first.targetWorkingHour : elapsedHour;
-    const workingHour = Math.min(elapsedHour, targetWorkingHour);
-
-    const rowsByHour = new Map(runRows.map((row) => [row.hour, row]));
-
-    // Gap jam di tengah run tetap dianggap jam produksi, sehingga jam yang
+    // Gap jam di tengah segmen tetap dianggap jam produksi, sehingga jam yang
     // tidak memiliki baris diisi dengan output/repair/reject 0.
     const hours: StyleHour[] = Array.from(
       { length: Math.max(0, displayEndHour - startHour + 1) },
-      (_, index) => {
-        const hour = startHour + index;
+      (_, hourIndex) => {
+        const hour = startHour + hourIndex;
         const row = rowsByHour.get(hour);
 
         return {
@@ -365,6 +471,60 @@ function buildStyleRuns(
       },
     );
 
+    return {
+      key: segment.key,
+      rows: segment.rows,
+      startHour,
+      endHour: displayEndHour,
+      elapsedHour,
+      hours,
+    };
+  });
+
+  // Style+part yang muncul lagi setelah style/part lain digabung menjadi satu
+  // run. Jam milik run lain tidak ikut dimasukkan ke run ini.
+  const groupedSegments = new Map<
+    string,
+    (typeof segmentData)[number][]
+  >();
+
+  for (const segment of segmentData) {
+    const grouped = groupedSegments.get(segment.key) ?? [];
+    grouped.push(segment);
+    groupedSegments.set(segment.key, grouped);
+  }
+
+  return [...groupedSegments.values()].map((runSegments) => {
+    const firstSegment = runSegments[0];
+    const lastSegment = runSegments[runSegments.length - 1];
+    const first = firstSegment.rows[0];
+    const last = lastSegment.rows[lastSegment.rows.length - 1];
+    const elapsedHour = runSegments.reduce(
+      (sum, segment) => sum + segment.elapsedHour,
+      0,
+    );
+    const targetWorkingHour =
+      first.targetWorkingHour > 0 ? first.targetWorkingHour : elapsedHour;
+    const workingHour = Math.min(elapsedHour, targetWorkingHour);
+    const hoursByHour = new Map<number, StyleHour>();
+
+    for (const segment of runSegments) {
+      for (const entry of segment.hours) {
+        const current = hoursByHour.get(entry.hour);
+
+        if (!current) {
+          hoursByHour.set(entry.hour, { ...entry });
+          continue;
+        }
+
+        current.output += entry.output;
+        current.repair += entry.repair;
+        current.reject += entry.reject;
+        current.hasData = Boolean(current.hasData || entry.hasData);
+      }
+    }
+
+    const hours = [...hoursByHour.values()].sort((a, b) => a.hour - b.hour);
     const totalOutput = hours.reduce((sum, hour) => sum + hour.output, 0);
     const totalRepair = hours.reduce((sum, hour) => sum + hour.repair, 0);
     const totalReject = hours.reduce((sum, hour) => sum + hour.reject, 0);
@@ -373,13 +533,13 @@ function buildStyleRuns(
     const manPower = last.manPower;
 
     return {
-      id: `${first.line}-${first.date}-${first.shift}-${first.style}-${first.hour}`,
+      id: `${first.line}-${first.date}-${first.shift}-${first.style}-${first.parts || 'no-part'}`,
       style: first.style,
       parts: first.parts,
       operator: first.operator,
-      moldings: moldingsByStyle.get(first.style) ?? [],
-      startHour,
-      endHour: displayEndHour,
+      moldings: first.moldings,
+      startHour: Math.min(...runSegments.map((segment) => segment.startHour)),
+      endHour: Math.max(...runSegments.map((segment) => segment.endHour)),
       hourlyTarget,
       totalTarget,
       totalOutput,
@@ -420,9 +580,9 @@ function buildTargetOnlyRuns(
     );
 
     return {
-      id: `${target.line}-${target.date}-${target.shift}-${target.style}-1`,
+      id: `${target.line}-${target.date}-${target.shift}-${target.style}-${target.part || 'no-part'}`,
       style: target.style,
-      parts: target.part === '-' ? '' : target.part,
+      parts: target.part,
       operator: target.operator,
       moldings: target.moldings,
       startHour: 1,
@@ -572,7 +732,8 @@ function getData(
   const targetsData: CellValue[][] = targetsSheet.getDataRange().getValues();
   const actualData: CellValue[][] = actualSheet.getDataRange().getValues();
   const wipByStyle = readWipReferences(wipData);
-  const { byStyle: targetByStyle } = readTargetReferences(targetsData);
+  const { byPart: targetByPart, byStyle: targetByStyle } =
+    readTargetReferences(targetsData);
   const problems = getProblems(date, shift);
 
   // Mode otomatis memakai tanggal/shift dari sheet Jam. Mode filter memakai
@@ -587,24 +748,44 @@ function getData(
         (!outputShift || row.shift === outputShift),
     )
     .map((row) => {
-      const key = createStyleReferenceKey(
+      const styleKey = createStyleReferenceKey(
         row.date,
         row.line,
         row.shift,
         row.style,
       );
-      const target = targetByStyle.get(key);
+      const partKey = createPartReferenceKey(
+        row.date,
+        row.line,
+        row.shift,
+        row.style,
+        row.parts,
+      );
+      // Actual yang punya part harus cocok persis. Fallback ke level style
+      // hanya dipakai untuk actual lama yang kolom part-nya kosong.
+      const target = row.parts
+        ? targetByPart.get(partKey)
+        : targetByStyle.get(styleKey);
+      const targetKey = row.parts
+        ? target
+          ? partKey
+          : ''
+        : target
+          ? styleKey
+          : '';
       const totalWorkingHour = target?.totalWorkingHour ?? 0;
 
       return {
         ...row,
-        parts: target?.part && target.part !== '-' ? target.part : row.parts,
+        parts: target?.part ?? row.parts,
         operator: target?.operator ?? '-',
         manPower: target?.manPower ?? 0,
-        wip: wipByStyle.get(key) ?? 0,
+        wip: wipByStyle.get(styleKey) ?? 0,
         hourlyTarget:
           target && totalWorkingHour > 0 ? target.target / totalWorkingHour : 0,
         targetWorkingHour: totalWorkingHour,
+        targetKey,
+        moldings: target?.moldings ?? [],
       };
     });
 
@@ -623,7 +804,7 @@ function getData(
 
   const targetGroupsByLine = new Map<string, Map<string, StyleTarget[]>>();
 
-  for (const target of targetByStyle.values()) {
+  for (const target of targetByPart.values()) {
     if (outputDate && target.date !== outputDate) continue;
     if (outputShift && target.shift !== outputShift) continue;
 
@@ -658,26 +839,92 @@ function getData(
 
     const groupKey = `${targets[0].date}|${targets[0].shift}`;
     const actualRows = actualGroupsByLine.get(line)?.get(groupKey) ?? [];
-    const targetStyles = new Set(targets.map((target) => target.style));
-    const moldingsByStyle = new Map(
-      targets.map((target) => [target.style, target.moldings]),
+    const targetPartKeys = new Set(
+      targets.map((target) =>
+        createPartReferenceKey(
+          target.date,
+          target.line,
+          target.shift,
+          target.style,
+          target.part,
+        ),
+      ),
     );
-    const targetActualRows = actualRows.filter((row) =>
-      targetStyles.has(row.style),
+    const targetStyleKeys = new Set(
+      targets.map((target) =>
+        createStyleReferenceKey(
+          target.date,
+          target.line,
+          target.shift,
+          target.style,
+        ),
+      ),
     );
-    let runs: StyleRun[];
+    const targetActualRows = actualRows.filter(
+      (row) =>
+        row.targetKey !== '' &&
+        (targetPartKeys.has(row.targetKey) ||
+          targetStyleKeys.has(row.targetKey)),
+    );
+    const currentHour = schedule
+      ? schedule.currentHour
+      : targetActualRows.reduce((max, row) => Math.max(max, row.hour), 0);
+    const actualRuns =
+      targetActualRows.length > 0
+        ? buildStyleRuns(targetActualRows, currentHour)
+        : [];
+    const coveredTargetKeys = new Set<string>();
 
-    if (targetActualRows.length > 0) {
-      const currentHour = schedule
-        ? schedule.currentHour
-        : targetActualRows.reduce((max, row) => Math.max(max, row.hour), 0);
+    for (const row of targetActualRows) {
+      if (targetPartKeys.has(row.targetKey)) {
+        coveredTargetKeys.add(row.targetKey);
+        continue;
+      }
 
-      runs = buildStyleRuns(targetActualRows, currentHour, moldingsByStyle);
-    } else {
-      // Belum ada actual untuk target style mana pun: tampilkan semua target
-      // sebagai placeholder jam 1..10 dengan output 0.
-      runs = buildTargetOnlyRuns(targets, wipByStyle);
+      // Fallback style mencakup seluruh part pada style tersebut.
+      for (const target of targets) {
+        if (
+          createStyleReferenceKey(
+            target.date,
+            target.line,
+            target.shift,
+            target.style,
+          ) === row.targetKey
+        ) {
+          coveredTargetKeys.add(
+            createPartReferenceKey(
+              target.date,
+              target.line,
+              target.shift,
+              target.style,
+              target.part,
+            ),
+          );
+        }
+      }
     }
+
+    const targetOnlyTargets = targets.filter(
+      (target) =>
+        !coveredTargetKeys.has(
+          createPartReferenceKey(
+            target.date,
+            target.line,
+            target.shift,
+            target.style,
+            target.part,
+          ),
+        ),
+    );
+    const runs = [
+      ...actualRuns,
+      ...buildTargetOnlyRuns(targetOnlyTargets, wipByStyle),
+    ].sort(
+      (a, b) =>
+        a.startHour - b.startHour ||
+        a.style.localeCompare(b.style, 'id') ||
+        a.parts.localeCompare(b.parts, 'id'),
+    );
 
     if (runs.length === 0) continue;
 

@@ -15,6 +15,10 @@ type ActualOutput = {
   wip: number;
   hourlyTarget: number;
   targetWorkingHour: number;
+  /** Key target yang dipakai untuk mencocokkan baris actual ini. */
+  targetKey: string;
+  /** Pasangan size/isi molding dari target yang cocok. */
+  moldings: MoldingItem[];
 };
 
 type MoldingItem = {
@@ -36,5 +40,6 @@ type StyleTarget = {
 };
 
 type TargetReferences = {
+  byPart: Map<string, StyleTarget>;
   byStyle: Map<string, StyleTarget>;
 };

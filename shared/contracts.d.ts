@@ -19,7 +19,9 @@ export type StyleRun = {
   operator: string;
   /** Pasangan size dan isi molding dari sheet target untuk style ini. */
   moldings: MoldingItem[];
+  /** Jam paling awal dari seluruh segmen run. */
   startHour: number;
+  /** Jam paling akhir dari seluruh segmen run. */
   endHour: number;
   hourlyTarget: number;
   totalTarget: number;
@@ -34,6 +36,10 @@ export type StyleRun = {
   manHour: number;
   wip: number;
   performance: number;
+  /**
+   * Jam milik run ini. Bisa tidak berurutan jika style+part yang sama muncul
+   * lagi setelah style/part lain.
+   */
   hours: StyleHour[];
 };
 

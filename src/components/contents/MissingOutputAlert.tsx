@@ -39,6 +39,7 @@ type AlertItem = {
   line: string;
   shift: Shift;
   style: string;
+  part: string;
   hours: number[];
 };
 
@@ -47,7 +48,7 @@ type AlertGroup = {
   section: AlertItem['section'];
   line: string;
   shift: Shift;
-  styles: { style: string; hours: number[] }[];
+  styles: { style: string; part: string; hours: number[] }[];
 };
 
 function itemKey(item: Pick<AlertItem, 'section' | 'line' | 'shift'>) {
@@ -84,7 +85,11 @@ function groupItems(items: AlertItem[]): AlertGroup[] {
     const last = groups[groups.length - 1];
 
     if (last && last.key === key) {
-      last.styles.push({ style: item.style, hours: item.hours });
+      last.styles.push({
+        style: item.style,
+        part: item.part,
+        hours: item.hours,
+      });
       continue;
     }
 
@@ -93,7 +98,7 @@ function groupItems(items: AlertItem[]): AlertGroup[] {
       section: item.section,
       line: item.line,
       shift: item.shift,
-      styles: [{ style: item.style, hours: item.hours }],
+      styles: [{ style: item.style, part: item.part, hours: item.hours }],
     });
   }
 
@@ -128,20 +133,29 @@ export default function MissingOutputAlert({
     ];
 
     return missing.flatMap((entry) => {
-      const byStyle = new Map<string, number[]>();
+      const byStylePart = new Map<
+        string,
+        { style: string; part: string; hours: number[] }
+      >();
 
-      for (const { hour, style } of entry.hours) {
-        const hours = byStyle.get(style) ?? [];
-        hours.push(hour);
-        byStyle.set(style, hours);
+      for (const { hour, style, part } of entry.hours) {
+        const stylePartKey = JSON.stringify([style, part]);
+        const item = byStylePart.get(stylePartKey) ?? {
+          style,
+          part,
+          hours: [],
+        };
+        item.hours.push(hour);
+        byStylePart.set(stylePartKey, item);
       }
 
-      return [...byStyle.entries()].map(
-        ([style, hours]): AlertItem => ({
+      return [...byStylePart.values()].map(
+        ({ style, part, hours }): AlertItem => ({
           section: entry.section,
           line: entry.line,
           shift: entry.shift,
           style,
+          part,
           hours,
         }),
       );
@@ -151,7 +165,10 @@ export default function MissingOutputAlert({
   const itemsKey = useMemo(
     () =>
       items
-        .map((item) => `${itemKey(item)}|${item.style}|${item.hours.join(',')}`)
+        .map(
+          (item) =>
+            `${itemKey(item)}|${item.style}|${item.part}|${item.hours.join(',')}`,
+        )
         .join(';'),
     [items],
   );
@@ -259,14 +276,19 @@ export default function MissingOutputAlert({
                   <div className="flex flex-col gap-1.5">
                     {group.styles.map((entry) => (
                       <div
-                        key={entry.style}
+                        key={`${entry.style}-${entry.part}`}
                         className="flex flex-wrap items-center gap-1.5"
                       >
                         <span
                           className="max-w-full truncate text-xs font-semibold"
-                          title={entry.style}
+                          title={
+                            entry.part
+                              ? `${entry.style} (${entry.part})`
+                              : entry.style
+                          }
                         >
                           {entry.style}
+                          {entry.part ? ` (${entry.part})` : ''}
                         </span>
                         {entry.hours.map((hour) => (
                           <Badge key={hour} variant="destructive">

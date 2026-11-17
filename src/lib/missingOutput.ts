@@ -5,6 +5,7 @@ export type MissingOutputSection = 'tpr' | 'dirbon';
 export type MissingOutputHour = {
   hour: number;
   style: string;
+  part: string;
 };
 
 export type MissingOutput = {
@@ -38,7 +39,11 @@ export function findMissingOutputs(
             .filter(
               (entry) => entry.hasData === false && entry.hour < currentHour,
             )
-            .map((entry) => ({ hour: entry.hour, style: run.style })),
+            .map((entry) => ({
+              hour: entry.hour,
+              style: run.style,
+              part: run.parts,
+            })),
         )
         .sort((a, b) => a.hour - b.hour);
 
