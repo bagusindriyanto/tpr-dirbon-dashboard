@@ -1,4 +1,4 @@
-import { useGetOutputs } from '@/api/getOutputs';
+import { useGetDashboardData } from '@/api/getData';
 import { findMissingOutputs } from '@/lib/missingOutput';
 import { cn } from '@/lib/utils';
 import type { GetDataFilter, Shift } from '@/types/output';
@@ -22,7 +22,6 @@ import {
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
-const CLOCK_TICK_MS = 15_000;
 const AUTO_ROTATE_MS = 15_000;
 const LIVE_REFETCH_MS = 30_000;
 
@@ -106,30 +105,26 @@ export default function MissingOutputAlert({
 }: MissingOutputAlertProps) {
   const isLive = !filter?.date && !filter?.shift;
   const refetchInterval = isLive ? LIVE_REFETCH_MS : undefined;
-  const tpr = useGetOutputs('tpr', filter, { refetchInterval });
-  const dirbon = useGetOutputs('dirbon', filter, { refetchInterval });
-  const [now, setNow] = useState(() => new Date());
+  const dashboard = useGetDashboardData(filter, { refetchInterval });
   const pageSize = useDialogPageSize();
   const [page, setPage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setNow(new Date());
-    }, CLOCK_TICK_MS);
-
-    return () => window.clearInterval(interval);
-  }, []);
-
   // Satu item = satu style pada satu line. Line dengan banyak style dipecah
-  // agar tidak memaksa dialog memanjang ke bawah.
+  // agar tidak memaksa dialog memanjang ke bawah. Jam yang dianggap selesai
+  // sepenuhnya mengikuti sheet `Jam`.
   const items = useMemo(() => {
     if (!isLive) return [];
 
+    const data = dashboard.data;
+    const schedule = data?.schedule ?? null;
+
+    if (!schedule) return [];
+
     const missing = [
-      ...findMissingOutputs(tpr.data ?? [], 'tpr', now),
-      ...findMissingOutputs(dirbon.data ?? [], 'dirbon', now),
+      ...findMissingOutputs(data?.outputs.tpr ?? [], 'tpr', schedule),
+      ...findMissingOutputs(data?.outputs.dirbon ?? [], 'dirbon', schedule),
     ];
 
     return missing.flatMap((entry) => {
@@ -151,15 +146,12 @@ export default function MissingOutputAlert({
         }),
       );
     });
-  }, [dirbon.data, isLive, now, tpr.data]);
+  }, [dashboard.data, isLive]);
 
   const itemsKey = useMemo(
     () =>
       items
-        .map(
-          (item) =>
-            `${itemKey(item)}|${item.style}|${item.hours.join(',')}`,
-        )
+        .map((item) => `${itemKey(item)}|${item.style}|${item.hours.join(',')}`)
         .join(';'),
     [items],
   );
@@ -171,15 +163,15 @@ export default function MissingOutputAlert({
     setDismissedKey(null);
   }
 
-  const isUnavailable = tpr.isPending || dirbon.isPending;
-  const hasError = tpr.isError || dirbon.isError;
+  const isUnavailable = dashboard.isPending;
+  const hasError = dashboard.isError;
   const open =
     isLive &&
     !isUnavailable &&
     !hasError &&
     items.length > 0 &&
     itemsKey !== dismissedKey;
-  const isFetching = tpr.isFetching || dirbon.isFetching;
+  const isFetching = dashboard.isFetching;
 
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
@@ -212,8 +204,7 @@ export default function MissingOutputAlert({
   };
 
   const refresh = () => {
-    void tpr.refetch();
-    void dirbon.refetch();
+    void dashboard.refetch();
   };
 
   return (
@@ -341,8 +332,8 @@ export default function MissingOutputAlert({
           )}
 
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Jam di atas sudah melewati toleransi 15 menit. Popup akan muncul
-            lagi jika ada output baru yang belum diisi.
+            Jam di atas sudah melewati toleransi. Popup akan muncul kembali jika
+            ada output baru yang belum diisi.
           </p>
 
           <AlertDialogFooter>

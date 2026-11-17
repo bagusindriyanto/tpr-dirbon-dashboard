@@ -25,9 +25,6 @@ export function isWithinShift(shift: Shift, now = new Date()): boolean {
 
 const HOUR_MS = 60 * 60 * 1000;
 
-/** Toleransi sebelum jam yang kosong dianggap terlambat. */
-export const PRODUCTION_HOUR_TOLERANCE_MINUTES = 15;
-
 export function getCurrentShift(now = new Date()): Shift {
   return isWithinShift('1', now) ? '1' : '2';
 }
@@ -66,33 +63,4 @@ export function getProductionHour(
   const elapsed = Math.floor((now.getTime() - start.getTime()) / HOUR_MS) + 1;
 
   return Math.min(Math.max(elapsed, 1), PRODUCTION_HOURS);
-}
-
-export function getProductionHourStart(
-  now: Date,
-  shift: Shift,
-  hour: number,
-): Date {
-  return new Date(
-    getShiftStart(now, shift).getTime() + (hour - 1) * HOUR_MS,
-  );
-}
-
-/**
- * Jam dianggap terlambat jika sekarang sudah melewati akhir jam tersebut
- * ditambah toleransi.
- */
-export function isPastTolerance(
-  now: Date,
-  shift: Shift,
-  hour: number,
-): boolean {
-  const hourEnd = new Date(
-    getProductionHourStart(now, shift, hour).getTime() + HOUR_MS,
-  );
-
-  return (
-    now.getTime() >=
-    hourEnd.getTime() + PRODUCTION_HOUR_TOLERANCE_MINUTES * 60 * 1000
-  );
 }

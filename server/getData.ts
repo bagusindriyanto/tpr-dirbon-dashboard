@@ -373,14 +373,10 @@ function buildTargetOnlyRuns(
 ): StyleRun[] {
   return targets.map((target) => {
     const hourlyTarget =
-      target.totalWorkingHour > 0
-        ? target.target / target.totalWorkingHour
-        : 0;
+      target.totalWorkingHour > 0 ? target.target / target.totalWorkingHour : 0;
     const workingHour = Math.min(
       PRODUCTION_HOURS,
-      target.totalWorkingHour > 0
-        ? target.totalWorkingHour
-        : PRODUCTION_HOURS,
+      target.totalWorkingHour > 0 ? target.totalWorkingHour : PRODUCTION_HOURS,
     );
     const hours: StyleHour[] = Array.from(
       { length: PRODUCTION_HOURS },
@@ -536,6 +532,9 @@ function getData(
   // Jadwal hanya dipakai saat tanggal dan shift sama-sama otomatis.
   const schedule = scheduleSheet ? readCurrentSchedule_(scheduleSheet) : null;
   const autoDate = schedule ? getScheduleDateKey_(schedule, new Date()) : '';
+  // Kirim snapshot yang sama ke frontend agar alert tidak menghitung ulang
+  // tanggal/shift dari jam browser.
+  const scheduleSnapshot = schedule ? { ...schedule, date: autoDate } : null;
 
   const wipData: CellValue[][] = wipSheet.getDataRange().getValues();
   const targetsData: CellValue[][] = targetsSheet.getDataRange().getValues();
@@ -577,10 +576,7 @@ function getData(
       };
     });
 
-  const actualGroupsByLine = new Map<
-    string,
-    Map<string, ActualOutput[]>
-  >();
+  const actualGroupsByLine = new Map<string, Map<string, ActualOutput[]>>();
 
   for (const row of rows) {
     const lineGroups =
@@ -680,6 +676,7 @@ function getData(
   return {
     outputs: { tpr: tprData, dirbon: dirbonData },
     problems,
+    schedule: scheduleSnapshot,
   };
 }
 

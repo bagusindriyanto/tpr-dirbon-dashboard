@@ -4,4 +4,6 @@ export type {
   StyleRun,
   Shift,
   GetDataFilter,
+  GetDataResult,
+  ScheduleSnapshot,
 } from '../../shared/contracts';

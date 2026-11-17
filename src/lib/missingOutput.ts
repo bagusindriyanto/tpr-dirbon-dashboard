@@ -1,5 +1,4 @@
-import { getCurrentShift, isPastTolerance } from '@/lib/shift';
-import type { Output, Shift } from '@/types/output';
+import type { Output, ScheduleSnapshot, Shift } from '@/types/output';
 
 export type MissingOutputSection = 'tpr' | 'dirbon';
 
@@ -16,16 +15,20 @@ export type MissingOutput = {
 };
 
 /**
- * Kumpulkan jam produksi yang belum memiliki input dan sudah melewati
- * toleransi 15 menit. Jam dengan output 0 yang memang diisi tidak dianggap
- * hilang karena `hasData` bernilai true.
+ * Kumpulkan jam produksi yang belum memiliki input. Jam harus sudah selesai
+ * menurut sheet `Jam` (`hour < currentHour`). Jam dengan output 0 yang memang
+ * diisi tidak dianggap hilang karena `hasData` bernilai true.
  */
 export function findMissingOutputs(
   outputs: Output[],
   section: MissingOutputSection,
-  now = new Date(),
-  shift: Shift = getCurrentShift(now),
+  schedule: Pick<ScheduleSnapshot, 'currentHour' | 'currentShift'> | null,
 ): MissingOutput[] {
+  if (!schedule || schedule.currentHour <= 0) return [];
+
+  const shift = schedule.currentShift;
+  const currentHour = schedule.currentHour;
+
   return outputs
     .filter((output) => output.shift === shift)
     .map((output) => {
@@ -33,8 +36,7 @@ export function findMissingOutputs(
         .flatMap((run) =>
           run.hours
             .filter(
-              (entry) =>
-                entry.hasData === false && isPastTolerance(now, shift, entry.hour),
+              (entry) => entry.hasData === false && entry.hour < currentHour,
             )
             .map((entry) => ({ hour: entry.hour, style: run.style })),
         )

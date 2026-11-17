@@ -1,6 +1,12 @@
-import type { GasFunctions, Output, Shift } from '../../shared/contracts';
+import type {
+  GasFunctions,
+  Output,
+  ScheduleSnapshot,
+  Shift,
+} from '../../shared/contracts';
 import { createMockOutput } from '@/mocks/output';
 import { createMockProblems } from '@/mocks/problem';
+import { getProductionHour } from './shift';
 
 function getShiftFromTimestamp(timestampTime: number): Shift {
   const hour = new Date(timestampTime).getHours();
@@ -11,6 +17,17 @@ function getDateKeyFromTimestamp(timestampTime: number): string {
   const value = new Date(timestampTime);
   const pad = (part: number) => String(part).padStart(2, '0');
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+}
+
+function getMockSchedule(now = new Date()): ScheduleSnapshot {
+  const currentShift = getShiftFromTimestamp(now.getTime());
+
+  return {
+    date: getDateKeyFromTimestamp(now.getTime()),
+    currentHour: getProductionHour(now, currentShift),
+    currentDay: ((now.getDay() + 6) % 7) + 1,
+    currentShift,
+  };
 }
 
 export const gasMock: GasFunctions = {
@@ -42,6 +59,7 @@ export const gasMock: GasFunctions = {
         ),
       },
       problems,
+      schedule: getMockSchedule(),
     };
   },
   getOutstandingData: () => ({

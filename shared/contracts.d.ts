@@ -72,10 +72,25 @@ export type GetDataFilter = {
 
 export type GasResult<TData> = Record<Section, TData[]>;
 
+/** Snapshot sheet `Jam` yang dipakai saat mode otomatis. */
+export type ScheduleSnapshot = {
+  /** Tanggal produksi yang dipakai untuk membaca target dan actual. */
+  date: string;
+  /** 0 = belum/tidak masuk jam produksi, 1..10 = jam produksi. */
+  currentHour: number;
+  /** Hari produksi: 1=Senin ... 7=Minggu. */
+  currentDay: number;
+  currentShift: Shift;
+};
+
+export type GetDataResult = {
+  outputs: GasResult<Output>;
+  problems: Problem[];
+  /** null jika request memakai filter tanggal/shift. */
+  schedule: ScheduleSnapshot | null;
+};
+
 export type GasFunctions = {
-  getData: (filter?: GetDataFilter) => {
-    outputs: GasResult<Output>;
-    problems: Problem[];
-  };
+  getData: (filter?: GetDataFilter) => GetDataResult;
   getOutstandingData: () => GasResult<Outstanding>;
 };
