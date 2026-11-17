@@ -34,7 +34,7 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((value) => value + 1);
-    }, 8_000);
+    }, 60_000);
 
     return () => clearInterval(interval);
   }, []);

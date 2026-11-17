@@ -5,9 +5,9 @@ import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import OutputCard from './OutputCard';
 
-const AUTO_ROTATE_MS = 20_000;
+const AUTO_ROTATE_MS = 100_000;
 const LARGE_PAGE_SIZE = 12;
-const LARGE_AUTO_ROTATE_MS = 25_000;
+const LARGE_AUTO_ROTATE_MS = 120_000;
 const DEFAULT_PAGE_SIZE = 8;
 
 // Plafon lebar grid saat line yang tampil sedikit, agar card tidak melar.
