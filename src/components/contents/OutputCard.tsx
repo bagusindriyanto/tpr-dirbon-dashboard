@@ -135,6 +135,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
   const activeIndex = item.data.length > 0 ? tick % item.data.length : -1;
   const activeRun = activeIndex >= 0 ? item.data[activeIndex] : undefined;
   const balance = (activeRun?.totalOutput ?? 0) - (activeRun?.totalTarget ?? 0);
+  const moldings = activeRun?.moldings ?? [];
 
   const runByHour = useMemo(() => {
     const map = new Map<number, number>();
@@ -340,12 +341,43 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
               : '–'
           }
         />
-        <Kpi
-          label="Jam Orang"
-          value={
-            activeRun ? `${numberFormat.format(activeRun.manHour)} jam` : '–'
+        <div
+          className="flex min-w-0 flex-col items-center justify-center gap-0.5 bg-card px-1 py-1.5"
+          title={
+            moldings.length > 0
+              ? moldings
+                  .map((molding) => `${molding.size}: ${molding.molding}`)
+                  .join(' · ')
+              : 'Isi molding belum tersedia'
           }
-        />
+        >
+          <dt className="text-[8px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Isi Molding
+          </dt>
+          <dd
+            key={`${activeRun?.style}-${moldings.length}`}
+            className="w-full min-w-0 animate-in fade-in duration-300 ease-in-out"
+          >
+            {moldings.length > 0 ? (
+              <ul className="flex max-h-14 w-full flex-col items-center gap-0.5 overflow-y-auto">
+                {moldings.map((molding) => (
+                  <li
+                    key={`${molding.size}-${molding.molding}`}
+                    className="flex w-full items-center justify-center gap-1 text-[10px] leading-tight"
+                  >
+                    <span className="font-semibold">{molding.size}</span>
+                    <span className="text-muted-foreground">:</span>
+                    <span className="tabular-nums">{molding.molding}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-center text-xs font-bold leading-none text-muted-foreground">
+                –
+              </p>
+            )}
+          </dd>
+        </div>
       </dl>
 
       <dl className="col-span-10 grid grid-cols-3 bg-border gap-px">

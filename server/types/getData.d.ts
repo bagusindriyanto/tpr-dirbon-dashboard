@@ -17,6 +17,11 @@ type ActualOutput = {
   targetWorkingHour: number;
 };
 
+type MoldingItem = {
+  size: string;
+  molding: string;
+};
+
 type StyleTarget = {
   date: string;
   line: string;
@@ -27,6 +32,7 @@ type StyleTarget = {
   totalWorkingHour: number;
   operator: string;
   manPower: number;
+  moldings: MoldingItem[];
 };
 
 type TargetReferences = {

@@ -28,6 +28,8 @@ const TARGET_COLUMN_ALIASES = {
   totalWorkingHour: ['jk'],
   operator: ['helper line'],
   manPower: ['mp'],
+  size: ['size'],
+  molding: ['isi molding'],
 } as const;
 
 function normalizeSheetHeader(value: CellValue): string {
@@ -218,6 +220,8 @@ function readTargetReferences(data: CellValue[][]): TargetReferences {
     'totalWorkingHour',
     'operator',
     'manPower',
+    'size',
+    'molding',
   ] as const;
   const missingColumns = requiredColumns.filter((key) => columns[key] < 0);
 
@@ -237,7 +241,25 @@ function readTargetReferences(data: CellValue[][]): TargetReferences {
     if (!date || !line || !style) continue;
     if (shift !== '1' && shift !== '2') continue;
 
-    byStyle.set(createStyleReferenceKey(date, line, shift, style), {
+    const key = createStyleReferenceKey(date, line, shift, style);
+    const current = byStyle.get(key);
+    const moldings = current?.moldings ?? [];
+    const size = toString(row[columns.size]);
+    const molding = toString(row[columns.molding]);
+
+    // Satu baris target mewakili satu pasangan size/isi molding. Baris lain
+    // dengan key yang sama menambah pasangan, bukan menimpa pasangan lama.
+    if (
+      size &&
+      size !== '-' &&
+      molding &&
+      molding !== '-' &&
+      !moldings.some((item) => item.size === size && item.molding === molding)
+    ) {
+      moldings.push({ size, molding });
+    }
+
+    byStyle.set(key, {
       date,
       line,
       shift,
@@ -247,6 +269,7 @@ function readTargetReferences(data: CellValue[][]): TargetReferences {
       totalWorkingHour: toNumberOrZero(row[columns.totalWorkingHour]),
       operator: toString(row[columns.operator]) || '-',
       manPower: toNumberOrZero(row[columns.manPower]),
+      moldings,
     });
   }
 
@@ -275,7 +298,11 @@ function selectLatestTargetGroup(
   );
 }
 
-function buildStyleRuns(rows: ActualOutput[], currentHour: number): StyleRun[] {
+function buildStyleRuns(
+  rows: ActualOutput[],
+  currentHour: number,
+  moldingsByStyle: Map<string, MoldingItem[]>,
+): StyleRun[] {
   const sorted = [...rows].sort((a, b) => a.hour - b.hour);
   const groups: ActualOutput[][] = [];
 
@@ -350,6 +377,7 @@ function buildStyleRuns(rows: ActualOutput[], currentHour: number): StyleRun[] {
       style: first.style,
       parts: first.parts,
       operator: first.operator,
+      moldings: moldingsByStyle.get(first.style) ?? [],
       startHour,
       endHour: displayEndHour,
       hourlyTarget,
@@ -378,9 +406,7 @@ function buildTargetOnlyRuns(
     const hourlyTarget =
       target.totalWorkingHour > 0 ? target.target / target.totalWorkingHour : 0;
     const targetWorkingHour =
-      target.totalWorkingHour > 0
-        ? target.totalWorkingHour
-        : PRODUCTION_HOURS;
+      target.totalWorkingHour > 0 ? target.totalWorkingHour : PRODUCTION_HOURS;
     const workingHour = Math.min(PRODUCTION_HOURS, targetWorkingHour);
     const hours: StyleHour[] = Array.from(
       { length: PRODUCTION_HOURS },
@@ -398,6 +424,7 @@ function buildTargetOnlyRuns(
       style: target.style,
       parts: target.part === '-' ? '' : target.part,
       operator: target.operator,
+      moldings: target.moldings,
       startHour: 1,
       endHour: PRODUCTION_HOURS,
       hourlyTarget,
@@ -632,6 +659,9 @@ function getData(
     const groupKey = `${targets[0].date}|${targets[0].shift}`;
     const actualRows = actualGroupsByLine.get(line)?.get(groupKey) ?? [];
     const targetStyles = new Set(targets.map((target) => target.style));
+    const moldingsByStyle = new Map(
+      targets.map((target) => [target.style, target.moldings]),
+    );
     const targetActualRows = actualRows.filter((row) =>
       targetStyles.has(row.style),
     );
@@ -642,7 +672,7 @@ function getData(
         ? schedule.currentHour
         : targetActualRows.reduce((max, row) => Math.max(max, row.hour), 0);
 
-      runs = buildStyleRuns(targetActualRows, currentHour);
+      runs = buildStyleRuns(targetActualRows, currentHour, moldingsByStyle);
     } else {
       // Belum ada actual untuk target style mana pun: tampilkan semua target
       // sebagai placeholder jam 1..10 dengan output 0.

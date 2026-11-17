@@ -7,11 +7,18 @@ export type StyleHour = {
   hasData?: boolean;
 };
 
+export type MoldingItem = {
+  size: string;
+  molding: string;
+};
+
 export type StyleRun = {
   id: string;
   style: string;
   parts: string;
   operator: string;
+  /** Pasangan size dan isi molding dari sheet target untuk style ini. */
+  moldings: MoldingItem[];
   startHour: number;
   endHour: number;
   hourlyTarget: number;
