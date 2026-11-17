@@ -138,13 +138,28 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
 
   const runByHour = useMemo(() => {
     const map = new Map<number, number>();
+    const active = item.data[activeIndex];
+
+    // Saat beberapa target-only run berbagi jam 1..10, run aktif harus
+    // menang agar grid jam mengikuti style yang sedang tampil.
+    if (active) {
+      for (let hour = active.startHour; hour <= active.endHour; hour++) {
+        map.set(hour, activeIndex);
+      }
+    }
+
     item.data.forEach((run, index) => {
+      if (index === activeIndex) return;
+
       for (let hour = run.startHour; hour <= run.endHour; hour++) {
-        map.set(hour, index);
+        if (!map.has(hour)) {
+          map.set(hour, index);
+        }
       }
     });
+
     return map;
-  }, [item.data]);
+  }, [activeIndex, item.data]);
 
   return (
     <article className="grid h-full w-full min-w-0 overflow-hidden rounded-lg border border-border bg-border text-card-foreground shadow-sm grid-rows-subgrid row-span-7 grid-cols-10 gap-px">

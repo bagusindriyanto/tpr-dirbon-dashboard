@@ -23,6 +23,7 @@ const TARGET_COLUMN_ALIASES = {
   shift: ['shift'],
   line: ['line'],
   style: ['grup style'],
+  part: ['part'],
   target: ['target komitmen hari'],
   totalWorkingHour: ['jk'],
   operator: ['helper line'],
@@ -81,7 +82,6 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
     'hour',
     'line',
     'style',
-    'parts',
     'output',
     'repair',
     'reject',
@@ -112,15 +112,15 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
     const style = toString(row[columns.style]);
     if (!style || style === '-') continue;
 
-    const parts = toString(row[columns.parts]);
-    if (!parts || parts === '-') continue;
+    // Part adalah metadata target. Kolom part di actual opsional.
+    const parts = columns.parts >= 0 ? toString(row[columns.parts]) : '';
 
     rows.push({
       date,
       shift,
       line,
       style,
-      parts,
+      parts: parts === '-' ? '' : parts,
       operator: '-',
       hour,
       output: toNumberOrZero(row[columns.output]),
@@ -203,9 +203,8 @@ function readWipReferences(data: CellValue[][]): Map<string, number> {
 
 function readTargetReferences(data: CellValue[][]): TargetReferences {
   const byStyle = new Map<string, StyleTarget>();
-  const linesByGroup = new Map<string, Set<string>>();
 
-  if (data.length < 2) return { byStyle, linesByGroup };
+  if (data.length < 2) return { byStyle };
 
   const headers = data[0].map(normalizeSheetHeader);
   const columns = buildColumnMap(headers, TARGET_COLUMN_ALIASES);
@@ -214,6 +213,7 @@ function readTargetReferences(data: CellValue[][]): TargetReferences {
     'shift',
     'line',
     'style',
+    'part',
     'target',
     'totalWorkingHour',
     'operator',
@@ -238,25 +238,27 @@ function readTargetReferences(data: CellValue[][]): TargetReferences {
     if (shift !== '1' && shift !== '2') continue;
 
     byStyle.set(createStyleReferenceKey(date, line, shift, style), {
+      date,
+      line,
+      shift,
+      style,
+      part: toString(row[columns.part]) || '-',
       target: toNumberOrZero(row[columns.target]),
       totalWorkingHour: toNumberOrZero(row[columns.totalWorkingHour]),
       operator: toString(row[columns.operator]) || '-',
       manPower: toNumberOrZero(row[columns.manPower]),
     });
-
-    // Line dianggap aktif pada group ini hanya jika memiliki baris target.
-    const groupKey = `${date}|${shift}`;
-    const lines = linesByGroup.get(groupKey) ?? new Set<string>();
-    lines.add(line);
-    linesByGroup.set(groupKey, lines);
   }
 
-  return { byStyle, linesByGroup };
+  return { byStyle };
 }
 
-function selectLatestOutputGroup(groups: ActualOutput[][]): ActualOutput[] {
-  const now = new Date();
-  const currentShift = getShiftByTimestamp(now);
+function selectLatestTargetGroup(
+  groups: StyleTarget[][],
+): StyleTarget[] | null {
+  if (groups.length === 0) return null;
+
+  const currentShift = getShiftByTimestamp(new Date());
   const sorted = [...groups].sort((a, b) => {
     const dateOrder = b[0].date.localeCompare(a[0].date);
     if (dateOrder !== 0) return dateOrder;
@@ -270,20 +272,6 @@ function selectLatestOutputGroup(groups: ActualOutput[][]): ActualOutput[] {
   return (
     latestDateGroups.find((group) => group[0].shift === currentShift) ??
     latestDateGroups[0]
-  );
-}
-
-// Mode otomatis hanya menerima group yang persis sama dengan tanggal dan
-// shift aktif. Tidak ada fallback ke data produksi sebelumnya.
-function selectAutoOutputGroup_(
-  groups: ActualOutput[][],
-  autoDate: string,
-  autoShift: Shift,
-): ActualOutput[] | null {
-  return (
-    groups.find(
-      (group) => group[0].date === autoDate && group[0].shift === autoShift,
-    ) ?? null
   );
 }
 
@@ -372,6 +360,64 @@ function buildStyleRuns(rows: ActualOutput[], currentHour: number): StyleRun[] {
       manHour: manPower * workingHour,
       wip: last.wip,
       performance: totalTarget > 0 ? totalOutput / totalTarget : 0,
+      hours,
+    };
+  });
+}
+
+// Target ada tetapi actual untuk style tersebut belum ada. Tampilkan card
+// dengan target penuh dan seluruh jam produksi berstatus belum ada data.
+function buildTargetOnlyRuns(
+  targets: StyleTarget[],
+  wipByStyle: Map<string, number>,
+): StyleRun[] {
+  return targets.map((target) => {
+    const hourlyTarget =
+      target.totalWorkingHour > 0
+        ? target.target / target.totalWorkingHour
+        : 0;
+    const workingHour = Math.min(
+      PRODUCTION_HOURS,
+      target.totalWorkingHour > 0
+        ? target.totalWorkingHour
+        : PRODUCTION_HOURS,
+    );
+    const hours: StyleHour[] = Array.from(
+      { length: PRODUCTION_HOURS },
+      (_, index) => ({
+        hour: index + 1,
+        output: 0,
+        repair: 0,
+        reject: 0,
+        hasData: false,
+      }),
+    );
+
+    return {
+      id: `${target.line}-${target.date}-${target.shift}-${target.style}-1`,
+      style: target.style,
+      parts: target.part === '-' ? '' : target.part,
+      operator: target.operator,
+      startHour: 1,
+      endHour: PRODUCTION_HOURS,
+      hourlyTarget,
+      totalTarget: hourlyTarget * workingHour,
+      totalOutput: 0,
+      totalRepair: 0,
+      totalReject: 0,
+      manPower: target.manPower,
+      workingHour,
+      manHour: target.manPower * workingHour,
+      wip:
+        wipByStyle.get(
+          createStyleReferenceKey(
+            target.date,
+            target.line,
+            target.shift,
+            target.style,
+          ),
+        ) ?? 0,
+      performance: 0,
       hours,
     };
   });
@@ -495,12 +541,19 @@ function getData(
   const targetsData: CellValue[][] = targetsSheet.getDataRange().getValues();
   const actualData: CellValue[][] = actualSheet.getDataRange().getValues();
   const wipByStyle = readWipReferences(wipData);
-  const { byStyle: targetByStyle, linesByGroup: activeLinesByGroup } =
-    readTargetReferences(targetsData);
+  const { byStyle: targetByStyle } = readTargetReferences(targetsData);
   const problems = getProblems(date, shift);
+
+  // Mode otomatis memakai tanggal/shift dari sheet Jam. Mode filter memakai
+  // filter apa adanya; jika hanya tanggal, group shift dipilih nanti.
+  const outputDate = schedule ? autoDate : date;
+  const outputShift = schedule ? schedule.currentShift : shift;
+
   const rows = aggregateActualOutputs(readActualOutputs(actualData))
     .filter(
-      (row) => (!date || row.date === date) && (!shift || row.shift === shift),
+      (row) =>
+        (!outputDate || row.date === outputDate) &&
+        (!outputShift || row.shift === outputShift),
     )
     .map((row) => {
       const key = createStyleReferenceKey(
@@ -514,6 +567,7 @@ function getData(
 
       return {
         ...row,
+        parts: target?.part && target.part !== '-' ? target.part : row.parts,
         operator: target?.operator ?? '-',
         manPower: target?.manPower ?? 0,
         wip: wipByStyle.get(key) ?? 0,
@@ -522,15 +576,37 @@ function getData(
         targetWorkingHour: totalWorkingHour,
       };
     });
-  const currentHourByGroup = new Map<string, number>();
 
-  // Menentukan jam saat ini berdasarkan data output
+  const actualGroupsByLine = new Map<
+    string,
+    Map<string, ActualOutput[]>
+  >();
+
   for (const row of rows) {
-    const key = `${row.date}|${row.shift}`;
-    const currentHour = currentHourByGroup.get(key) ?? 0;
-    if (row.hour > currentHour) {
-      currentHourByGroup.set(key, row.hour);
-    }
+    const lineGroups =
+      actualGroupsByLine.get(row.line) ?? new Map<string, ActualOutput[]>();
+    const groupKey = `${row.date}|${row.shift}`;
+    const group = lineGroups.get(groupKey) ?? [];
+
+    group.push(row);
+    lineGroups.set(groupKey, group);
+    actualGroupsByLine.set(row.line, lineGroups);
+  }
+
+  const targetGroupsByLine = new Map<string, Map<string, StyleTarget[]>>();
+
+  for (const target of targetByStyle.values()) {
+    if (outputDate && target.date !== outputDate) continue;
+    if (outputShift && target.shift !== outputShift) continue;
+
+    const lineGroups =
+      targetGroupsByLine.get(target.line) ?? new Map<string, StyleTarget[]>();
+    const groupKey = `${target.date}|${target.shift}`;
+    const group = lineGroups.get(groupKey) ?? [];
+
+    group.push(target);
+    lineGroups.set(groupKey, group);
+    targetGroupsByLine.set(target.line, lineGroups);
   }
 
   const activeProblemsByLine = new Map<string, Problem[]>();
@@ -543,45 +619,34 @@ function getData(
     activeProblemsByLine.set(problem.line, lineProblems);
   }
 
-  // Tanggal pada data adalah tanggal produksi; filter memakai nilai apa adanya.
-  const groupsByLine = new Map<string, Map<string, ActualOutput[]>>();
-
-  for (const row of rows) {
-    const lineGroups = groupsByLine.get(row.line) ?? new Map();
-    const key = `${row.date}|${row.shift}`;
-    const group = lineGroups.get(key) ?? [];
-
-    group.push(row);
-    lineGroups.set(key, group);
-    groupsByLine.set(row.line, lineGroups);
-  }
-
   const tprData: Output[] = [];
   const dirbonData: Output[] = [];
 
-  for (const [line, lineGroups] of groupsByLine) {
-    const groups = [...lineGroups.values()];
-    const selectedRows = schedule
-      ? selectAutoOutputGroup_(groups, autoDate, schedule.currentShift)
-      : selectLatestOutputGroup(groups);
+  // Target menentukan line yang tampil. Actual hanya mengisi output per jam.
+  for (const [line, lineGroups] of targetGroupsByLine) {
+    const targets = selectLatestTargetGroup([...lineGroups.values()]);
 
-    if (!selectedRows) continue;
+    if (!targets) continue;
 
-    const groupKey = `${selectedRows[0].date}|${selectedRows[0].shift}`;
-    const activeLines = activeLinesByGroup.get(groupKey);
+    const groupKey = `${targets[0].date}|${targets[0].shift}`;
+    const actualRows = actualGroupsByLine.get(line)?.get(groupKey) ?? [];
+    const targetStyles = new Set(targets.map((target) => target.style));
+    const targetActualRows = actualRows.filter((row) =>
+      targetStyles.has(row.style),
+    );
+    let runs: StyleRun[];
 
-    // Jika daftar target untuk group ini tersedia, hanya line di dalamnya
-    // yang ditampilkan. Line lama yang masih punya histori di sheet Actual
-    // tidak ikut muncul. Kalau target group belum tersedia, data actual tetap
-    // dipakai agar dashboard tidak kosong.
-    if (activeLines && !activeLines.has(line)) continue;
+    if (targetActualRows.length > 0) {
+      const currentHour = schedule
+        ? schedule.currentHour
+        : targetActualRows.reduce((max, row) => Math.max(max, row.hour), 0);
 
-    // Mode otomatis memakai jam dari sheet Jam. Mode filter tetap memakai
-    // jam terakhir yang tersedia pada data.
-    const currentHour = schedule
-      ? schedule.currentHour
-      : (currentHourByGroup.get(groupKey) ?? 0);
-    const runs = buildStyleRuns(selectedRows, currentHour);
+      runs = buildStyleRuns(targetActualRows, currentHour);
+    } else {
+      // Belum ada actual untuk target style mana pun: tampilkan semua target
+      // sebagai placeholder jam 1..10 dengan output 0.
+      runs = buildTargetOnlyRuns(targets, wipByStyle);
+    }
 
     if (runs.length === 0) continue;
 
@@ -591,7 +656,7 @@ function getData(
 
     const entry: Output = {
       line,
-      shift: selectedRows[0].shift,
+      shift: targets[0].shift,
       performance: totalTarget > 0 ? totalOutput / totalTarget : 0,
       data: runs,
       produksi: lineProblems.some((problem) => problem.pic === 'Produksi')

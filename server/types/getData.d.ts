@@ -18,6 +18,11 @@ type ActualOutput = {
 };
 
 type StyleTarget = {
+  date: string;
+  line: string;
+  shift: Shift;
+  style: string;
+  part: string;
   target: number;
   totalWorkingHour: number;
   operator: string;
@@ -26,6 +31,4 @@ type StyleTarget = {
 
 type TargetReferences = {
   byStyle: Map<string, StyleTarget>;
-  /** Line yang punya target pada tanggal|shift tertentu. */
-  linesByGroup: Map<string, Set<string>>;
 };
