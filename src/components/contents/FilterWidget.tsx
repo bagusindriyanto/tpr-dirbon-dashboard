@@ -10,12 +10,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { SunMoonIcon, MoonIcon, SunIcon, XCircleIcon } from 'lucide-react';
+import {
+  SunMoonIcon,
+  MoonIcon,
+  SunIcon,
+  XCircleIcon,
+  RefreshCwIcon,
+} from 'lucide-react';
 import { useToday } from '@/hooks/useToday';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 type FilterBarProps = {
   value: GetDataFilter;
   onChange: (value: GetDataFilter) => void;
+  onRefresh?: () => void | Promise<void>;
 };
 
 const AUTO_VALUE = 'auto';
@@ -43,8 +53,30 @@ const SHIFT_OPTIONS = [
 
 type ShiftValue = (typeof SHIFT_OPTIONS)[number]['value'];
 
-export default function FilterWidget({ value, onChange }: FilterBarProps) {
+export default function FilterWidget({
+  value,
+  onChange,
+  onRefresh,
+}: FilterBarProps) {
   const hasFilter = Boolean(value.date || value.shift);
+
+  const queryClient = useQueryClient();
+  const isFetchingQueries = useIsFetching() > 0;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFetching = isFetchingQueries || isRefreshing;
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        await queryClient.invalidateQueries();
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const today = useToday();
   const dateOptions = [
@@ -136,17 +168,33 @@ export default function FilterWidget({ value, onChange }: FilterBarProps) {
         </Select>
       </div>
 
-      {hasFilter && (
+      <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
         <Button
-          variant="destructive"
-          size="sm"
-          className="self-start sm:self-auto"
-          onClick={() => onChange({})}
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          onClick={handleRefresh}
+          disabled={isFetching}
+          title="Refresh data"
+          aria-label="Refresh data"
         >
-          <XCircleIcon data-icon="inline-start" />
-          Reset Filter
+          <RefreshCwIcon
+            className={cn('size-4', isFetching && 'animate-spin')}
+          />
         </Button>
-      )}
+
+        {hasFilter && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => onChange({})}
+          >
+            <XCircleIcon data-icon="inline-start" />
+            Reset Filter
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

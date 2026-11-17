@@ -1,6 +1,6 @@
 import { useGetDashboardData } from '@/api/getData';
 import { findMissingOutputs } from '@/lib/missingOutput';
-import { cn } from '@/lib/utils';
+// import { cn } from '@/lib/utils';
 import type { GetDataFilter, Shift } from '@/types/output';
 import {
   AlertTriangleIcon,
@@ -110,7 +110,10 @@ export default function MissingOutputAlert({
 }: MissingOutputAlertProps) {
   const isLive = !filter?.date && !filter?.shift;
   const refetchInterval = isLive ? LIVE_REFETCH_MS : undefined;
-  const dashboard = useGetDashboardData(filter, { refetchInterval });
+  const { data, isPending, isFetching, isError, refetch } = useGetDashboardData(
+    filter,
+    { refetchInterval },
+  );
   const pageSize = useDialogPageSize();
   const [page, setPage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -122,7 +125,6 @@ export default function MissingOutputAlert({
   const items = useMemo(() => {
     if (!isLive) return [];
 
-    const data = dashboard.data;
     const schedule = data?.schedule ?? null;
 
     if (!schedule) return [];
@@ -160,7 +162,7 @@ export default function MissingOutputAlert({
         }),
       );
     });
-  }, [dashboard.data, isLive]);
+  }, [data, isLive]);
 
   const itemsKey = useMemo(
     () =>
@@ -180,15 +182,12 @@ export default function MissingOutputAlert({
     setDismissedKey(null);
   }
 
-  const isUnavailable = dashboard.isPending;
-  const hasError = dashboard.isError;
   const open =
     isLive &&
-    !isUnavailable &&
-    !hasError &&
+    !isPending &&
+    !isError &&
     items.length > 0 &&
     itemsKey !== dismissedKey;
-  const isFetching = dashboard.isFetching;
 
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
@@ -221,7 +220,7 @@ export default function MissingOutputAlert({
   };
 
   const refresh = () => {
-    void dashboard.refetch();
+    void refetch();
   };
 
   return (
@@ -329,7 +328,7 @@ export default function MissingOutputAlert({
                 </Button>
               </div>
 
-              <div className="flex items-center gap-1">
+              {/* <div className="flex items-center gap-1">
                 {Array.from({ length: pageCount }, (_, index) => (
                   <button
                     key={index}
@@ -349,7 +348,7 @@ export default function MissingOutputAlert({
                     />
                   </button>
                 ))}
-              </div>
+              </div> */}
             </div>
           )}
 
