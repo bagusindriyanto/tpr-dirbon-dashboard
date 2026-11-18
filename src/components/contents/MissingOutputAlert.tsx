@@ -1,4 +1,9 @@
 import { useGetDashboardData } from '@/api/getData';
+import {
+  playAlertSound,
+  stopAlertSound,
+  unlockAlertSound,
+} from '@/lib/alertSound';
 import { findMissingOutputs } from '@/lib/missingOutput';
 // import { cn } from '@/lib/utils';
 import type { GetDataFilter, Shift } from '@/types/output';
@@ -7,6 +12,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
+  Volume2Icon,
+  VolumeXIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -24,6 +31,8 @@ import { Button } from '../ui/button';
 
 const AUTO_ROTATE_MS = 15_000;
 const LIVE_REFETCH_MS = 30_000;
+const ALERT_SOUND_REPEAT_MS = 1_600;
+const ALERT_SOUND_MUTED_KEY = 'dashboard.alertSoundMuted';
 
 const SHIFT_NAME = {
   '1': 'Pagi',
@@ -53,6 +62,24 @@ type AlertGroup = {
 
 function itemKey(item: Pick<AlertItem, 'section' | 'line' | 'shift'>) {
   return `${item.section}|${item.line}|${item.shift}`;
+}
+
+function readSoundMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    return window.localStorage.getItem(ALERT_SOUND_MUTED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeSoundMuted(muted: boolean): void {
+  try {
+    window.localStorage.setItem(ALERT_SOUND_MUTED_KEY, muted ? '1' : '0');
+  } catch {
+    // localStorage bisa diblokir di mode privat.
+  }
 }
 
 function getDialogPageSize(): number {
@@ -118,6 +145,7 @@ export default function MissingOutputAlert({
   const [page, setPage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(readSoundMuted);
 
   // Satu item = satu style pada satu line. Line dengan banyak style dipecah
   // agar tidak memaksa dialog memanjang ke bawah. Jam yang dianggap selesai
@@ -214,9 +242,61 @@ export default function MissingOutputAlert({
     return () => window.clearInterval(interval);
   }, [isPaused, open, pageCount]);
 
+  // Browser memblokir audio sebelum ada interaksi. Unlock sekali saat user
+  // pertama kali mengklik atau menekan tombol di mana pun.
+  useEffect(() => {
+    const unlock = () => {
+      void unlockAlertSound();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open || isMuted) return;
+
+    let cancelled = false;
+
+    const play = async () => {
+      await unlockAlertSound();
+      if (!cancelled) playAlertSound();
+    };
+
+    void play();
+    const interval = window.setInterval(() => {
+      void play();
+    }, ALERT_SOUND_REPEAT_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      stopAlertSound();
+    };
+  }, [isMuted, open]);
+
   const goToPage = (nextPage: number) => {
     if (pageCount <= 1) return;
     setPage((nextPage + pageCount) % pageCount);
+  };
+
+  const toggleSound = async () => {
+    const nextMuted = !isMuted;
+
+    setIsMuted(nextMuted);
+    writeSoundMuted(nextMuted);
+
+    if (!nextMuted) {
+      await unlockAlertSound();
+      playAlertSound();
+    }
   };
 
   return (
@@ -354,6 +434,19 @@ export default function MissingOutputAlert({
           </p>
 
           <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => void toggleSound()}
+              aria-label={
+                isMuted ? 'Aktifkan suara alert' : 'Matikan suara alert'
+              }
+              aria-pressed={!isMuted}
+              title={isMuted ? 'Aktifkan suara alert' : 'Matikan suara alert'}
+            >
+              {isMuted ? <VolumeXIcon /> : <Volume2Icon />}
+            </Button>
             <Button
               variant="outline"
               onClick={() => refetch()}
