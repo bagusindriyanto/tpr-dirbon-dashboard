@@ -278,12 +278,7 @@ export default function OutputCard({ item, tick = 0 }: OutputCardProps) {
                       : `Jam ke-${hour}: belum ada data · ${run.style}`
                 }
               >
-                <span
-                  className={cn(
-                    'text-xs font-semibold leading-none tabular-nums sm:text-sm',
-                    !hasData && 'text-muted-foreground',
-                  )}
-                >
+                <span className="text-xs font-semibold leading-none tabular-nums sm:text-sm">
                   {hasData ? numberFormat.format(output) : '–'}
                 </span>
               </dd>

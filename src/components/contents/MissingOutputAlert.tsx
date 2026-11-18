@@ -219,10 +219,6 @@ export default function MissingOutputAlert({
     setPage((nextPage + pageCount) % pageCount);
   };
 
-  const refresh = () => {
-    void refetch();
-  };
-
   return (
     <AlertDialog
       open={open}
@@ -358,7 +354,11 @@ export default function MissingOutputAlert({
           </p>
 
           <AlertDialogFooter>
-            <Button variant="outline" onClick={refresh} disabled={isFetching}>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
               <RefreshCwIcon
                 className={isFetching ? 'animate-spin' : ''}
                 data-icon="inline-start"

@@ -47,7 +47,7 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
     );
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {error ? (
         !outputData || outputData.length === 0 ? (
           <Empty className="border-2 bg-red-50 border-destructive">
@@ -78,13 +78,14 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
         ) : (
           <Alert className="bg-red-50 text-destructive border-destructive">
             <AlertTriangleIcon />
-            <AlertTitle>Gagal memuat data</AlertTitle>
+            <AlertTitle>Gagal memperbarui data</AlertTitle>
             <AlertDescription className="text-foreground">
               {error.message}
             </AlertDescription>
             <AlertAction>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => refetch()}
                 disabled={isFetching}
                 className="text-foreground"
@@ -133,6 +134,6 @@ export default function OutputContent({ section, filter }: OutputContentProps) {
           />
         )
       ) : null}
-    </>
+    </div>
   );
 }
