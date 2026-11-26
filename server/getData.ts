@@ -185,6 +185,7 @@ function readActualOutputs(data: CellValue[][]): ActualOutput[] {
       wip: 0,
       hourlyTarget: 0,
       targetWorkingHour: 0,
+      fullTarget: 0,
       targetKey: '',
       moldings: [],
     });
@@ -399,6 +400,7 @@ function selectLatestTargetGroup(
 function buildStyleRuns(
   rows: ActualOutput[],
   currentHour: number,
+  useFullTarget: boolean,
 ): StyleRun[] {
   const sorted = [...rows].sort(
     (a, b) =>
@@ -529,7 +531,11 @@ function buildStyleRuns(
     const totalRepair = hours.reduce((sum, hour) => sum + hour.repair, 0);
     const totalReject = hours.reduce((sum, hour) => sum + hour.reject, 0);
     const hourlyTarget = first.hourlyTarget;
-    const totalTarget = hourlyTarget * workingHour;
+    // Saat filter tanggal/shift aktif, target tidak boleh dipotong oleh jam
+    // actual terakhir. Gunakan target komitmen hari dari sheet target.
+    const totalTarget = useFullTarget
+      ? first.fullTarget
+      : hourlyTarget * workingHour;
     const manPower = last.manPower;
 
     return {
@@ -561,6 +567,7 @@ function buildStyleRuns(
 function buildTargetOnlyRuns(
   targets: StyleTarget[],
   wipByStyle: Map<string, number>,
+  useFullTarget: boolean,
 ): StyleRun[] {
   return targets.map((target) => {
     const hourlyTarget =
@@ -588,7 +595,7 @@ function buildTargetOnlyRuns(
       startHour: 1,
       endHour: PRODUCTION_HOURS,
       hourlyTarget,
-      totalTarget: hourlyTarget * workingHour,
+      totalTarget: useFullTarget ? target.target : hourlyTarget * workingHour,
       totalOutput: 0,
       totalRepair: 0,
       totalReject: 0,
@@ -784,6 +791,7 @@ function getData(
         hourlyTarget:
           target && totalWorkingHour > 0 ? target.target / totalWorkingHour : 0,
         targetWorkingHour: totalWorkingHour,
+        fullTarget: target?.target ?? 0,
         targetKey,
         moldings: target?.moldings ?? [],
       };
@@ -871,7 +879,7 @@ function getData(
       : targetActualRows.reduce((max, row) => Math.max(max, row.hour), 0);
     const actualRuns =
       targetActualRows.length > 0
-        ? buildStyleRuns(targetActualRows, currentHour)
+        ? buildStyleRuns(targetActualRows, currentHour, !isAuto)
         : [];
     const coveredTargetKeys = new Set<string>();
 
@@ -918,7 +926,7 @@ function getData(
     );
     const runs = [
       ...actualRuns,
-      ...buildTargetOnlyRuns(targetOnlyTargets, wipByStyle),
+      ...buildTargetOnlyRuns(targetOnlyTargets, wipByStyle, !isAuto),
     ].sort(
       (a, b) =>
         a.startHour - b.startHour ||

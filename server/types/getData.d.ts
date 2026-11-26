@@ -15,6 +15,8 @@ type ActualOutput = {
   wip: number;
   hourlyTarget: number;
   targetWorkingHour: number;
+  /** Target komitmen hari dari sheet target, sebelum dipotong jam berjalan. */
+  fullTarget: number;
   /** Key target yang dipakai untuk mencocokkan baris actual ini. */
   targetKey: string;
   /** Pasangan size/isi molding dari target yang cocok. */
